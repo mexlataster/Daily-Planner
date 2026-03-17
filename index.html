@@ -171,6 +171,7 @@ html,body{height:100%;background:#f5f5f3;font-family:'DM Sans',sans-serif}
 .toast{position:fixed;bottom:calc(80px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(20px);background:var(--accd);color:white;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -285,18 +286,29 @@ let URL_='', KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
 function saveCfg(u,k){localStorage.setItem(CFG,JSON.stringify({url:u,key:k}));URL_=u;KEY_=k;}
 
-// ── Supabase REST ─────────────────────────────────────────────────
-function api(path,opts={}){
-  const isNew=KEY_.startsWith('sb_');
-  const authHeader=isNew?'Bearer '+KEY_:'Bearer '+KEY_;
-  return fetch(URL_+'/rest/v1/'+path,{
-    headers:{'apikey':KEY_,'Authorization':authHeader,'Content-Type':'application/json','Prefer':'return=representation',...(opts.headers||{})},
-    ...opts
-  });
+// ── Supabase JS client ────────────────────────────────────────────
+let _supa=null;
+function getClient(){
+  if(_supa)return _supa;
+  _supa=window.supabase.createClient(URL_,KEY_);
+  return _supa;
 }
-async function sel(table,q=''){const r=await api(table+(q?'?'+q:''));if(!r.ok)throw new Error(await r.text());return r.json();}
-async function ups(table,data){const r=await api(table,{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
-async function del(table,col,val){const r=await api(table+'?'+col+'=eq.'+encodeURIComponent(val),{method:'DELETE'});if(!r.ok)throw new Error(await r.text());}
+async function sel(table,q=''){
+  let qb=getClient().from(table).select('*');
+  if(table==='habits')qb=qb.order('sort_order',{ascending:true}).order('id',{ascending:true});
+  if(table==='logs')qb=qb.order('date',{ascending:false}).limit(90);
+  const {data,error}=await qb;
+  if(error)throw new Error(error.message);
+  return data;
+}
+async function ups(table,data){
+  const {error}=await getClient().from(table).upsert(data,{onConflict:table==='habits'?'id':'date'});
+  if(error)throw new Error(error.message);
+}
+async function del(table,col,val){
+  const {error}=await getClient().from(table).delete().eq(col,val);
+  if(error)throw new Error(error.message);
+}
 
 // ── State ─────────────────────────────────────────────────────────
 const EMOJIS=['🧘','🏊','🏋️','🛒','🍳','🚴','🧹','📚','🌿','☕','🎯','💊','🐕','✏️','🎸','🏃','🍎','🧴','🎾','⚽','🏀','🧗','🥗','💤','🫁'];
