@@ -584,7 +584,7 @@ function buildPanel(h,log){
   if(h.type==='yoga'){
     const sessions=d.sessions||[];
     const pendingMood=pendingMoods[id];
-    const sessionHtml=sessions.map((s,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m);line-height:1.8">${s.hr?'↑ <strong style=color:var(--t)>'+s.hr+'</strong>':''} ${s.hre?'↓ <strong style=color:var(--t)>'+s.hre+'</strong> bpm':''} ${s.dur?'· <strong style=color:var(--t)>'+s.dur+'</strong> min':''}</div>`:''}${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:4px"><em>Felt:</em> ${esc(s.notes)}</div>`:''}</div>`).join('');
+    const sessionHtml=sessions.map((s,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m);line-height:1.8">${s.hr?'↑ <strong style=color:var(--t)>'+s.hr+'</strong>':''} ${s.hre?'↓ <strong style=color:var(--t)>'+s.hre+'</strong> bpm':''} ${s.dur?'· <strong style=color:var(--t)>'+s.dur+'</strong> min':''}</div>`:''}${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:4px">${esc(s.notes)}</div>`:''}</div>`).join('');
     return`${sessions.length?`<div class="dst">Today's sessions (${sessions.length})</div><div class="session-list">${sessionHtml}</div>`:''}<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;font-weight:500">Add session</div><div class="fr"><label>Highest HR</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div class="fr"><label>Lowest HR</label><input type="number" id="yhre${id}" placeholder="bpm"/></div><div class="fr"><label>Duration (min)</label><input type="number" id="ydur${id}" placeholder="e.g. 30"/></div><div class="fr"><label>How did it feel?</label><textarea id="yn${id}" placeholder="Describe your session..."></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;
   }
   if(h.type==='racket'){return`<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="e.g. 6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play with?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}" placeholder="How did it go?">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
@@ -732,7 +732,13 @@ function openDayReport(dateKey){
   if(!activeHabits.length){
     body.innerHTML=`<div class="report-empty"><div class="ei">📋</div><p>No habits set up yet.</p></div>`;
   } else {
-    body.innerHTML=activeHabits.map(h=>{
+    const doneHabits=activeHabits.filter(h=>!!log['d'+h.id]);
+    const skippedHabits=activeHabits.filter(h=>!log['d'+h.id]);
+    const sortedHabits=[...doneHabits,...skippedHabits];
+    const dividerIdx=doneHabits.length;
+    body.innerHTML=sortedHabits.map((h,idx)=>{
+      const isFirst=idx===dividerIdx&&dividerIdx>0&&dividerIdx<sortedHabits.length;
+      const divider=isFirst?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px">Not done today</div>`:'';
       const done=!!log['d'+h.id];
       const det=log['det'+h.id];
       const badge=done?'<span class="badge-done">Done</span>':'<span class="badge-skip">Skipped</span>';
@@ -747,7 +753,7 @@ function openDayReport(dateKey){
                 <div class="report-session-title">Session ${i+1}${s.time?' · '+s.time:''}</div>
                 ${s.hr?`<div class="report-field"><span class="report-field-label">Highest HR</span><span class="report-field-val">${s.hr} bpm</span></div>`:''}${s.hre?`<div class="report-field"><span class="report-field-label">Lowest HR</span><span class="report-field-val">${s.hre} bpm</span></div>`:''}${s.dur?`<div class="report-field"><span class="report-field-label">Duration</span><span class="report-field-val">${s.dur} min</span></div>`:''}
                 
-                ${s.notes?`<div class="report-field"><span class="report-field-label">How it felt</span><span class="report-field-val">${esc(s.notes)}</span></div>`:''}
+                ${s.notes?`<div class="report-field"><span class="report-field-label">Notes</span><span class="report-field-val">${esc(s.notes)}</span></div>`:''}
               </div>`).join('');
           }
         } else if(h.type==='counter'){
@@ -776,7 +782,7 @@ function openDayReport(dateKey){
         }
       }
 
-      return`<div class="report-habit">
+      return divider+`<div class="report-habit" style="${done?'':'opacity:0.45'}">
         <div class="report-habit-header">
           <span style="font-size:20px">${h.emoji}</span>
           <div style="flex:1"><div class="report-habit-name">${esc(h.name)}${badge}</div></div>
@@ -800,7 +806,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.18';
+const APP_VERSION='2026.03.17.19';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
