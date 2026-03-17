@@ -978,17 +978,23 @@ function closeDayReport(){
   document.getElementById('day-report').classList.remove('open');
 }
 // ── Vice helpers ─────────────────────────────────────────────────
-function calcViceStreak(id){
-  let streak=0;
+function calcViceStats(v){
   const today=new Date();
-  for(let i=0;i<365;i++){
-    const d=new Date(today);d.setDate(d.getDate()-i);
+  const todayKey2=today.toISOString().slice(0,10);
+  const startDate=v.created_at?new Date(v.created_at+'T12:00:00'):new Date(todayKey2+'T12:00:00');
+  let total=0,slips=0,currentStreak=0,countingStreak=true;
+  const d=new Date(today);
+  // Walk from today back to created_at
+  while(d>=startDate){
     const key=d.toISOString().slice(0,10);
     const log=logs[key]||{};
-    if(log['slip'+id])break;
-    streak++;
+    total++;
+    if(log['slip'+v.id]){slips++;countingStreak=false;}
+    else if(countingStreak)currentStreak++;
+    d.setDate(d.getDate()-1);
   }
-  return streak;
+  const cleanDays=total-slips;
+  return{streak:currentStreak,total,slips,cleanDays};
 }
 function toggleVicePanel(id){openVicePanels[id]=!openVicePanels[id];renderVices();}
 
@@ -1022,20 +1028,30 @@ function renderVices(){
 
   el.innerHTML=vices.map(v=>{
     const slipped=!!log['slip'+v.id];
-    const streak=calcViceStreak(v.id);
+    const st=calcViceStats(v);
     const isOpen=!!openVicePanels[v.id];
     const statusClass=slipped?'slipped':'clean';
-    const streakLabel=slipped?'slipped today':streak===0?'start your streak':streak===1?'1 day clean':streak+' days clean';
+    let streakLabel,mainNum,mainSub;
+    if(st.total<=1){
+      mainNum=slipped?'✗':'✓';mainSub=slipped?'today':'day 1';
+      streakLabel=slipped?'slipped today — restart tomorrow':'first day — keep going!';
+    } else if(slipped){
+      mainNum=st.cleanDays;mainSub='/ '+st.total+' days';
+      streakLabel=st.cleanDays+' out of '+st.total+' days clean';
+    } else {
+      mainNum=st.streak;mainSub=st.streak===st.total?'days clean':'day streak';
+      streakLabel=st.cleanDays+' / '+st.total+' days clean'+(st.slips>0?' · '+st.slips+' slip'+(st.slips>1?'s':''):'');
+    }
     return`<div class="vice-card ${statusClass}">
       <div style="text-align:center;min-width:52px">
-        <div class="vice-streak${slipped?' slipped':''}">${slipped?'✗':streak}</div>
-        <div style="font-size:10px;color:var(--m);margin-top:2px">${slipped?'today':'days'}</div>
+        <div class="vice-streak${slipped?' slipped':''}" style="font-size:${String(mainNum).length>3?'22px':'32px'}">${mainNum}</div>
+        <div style="font-size:10px;color:var(--m);margin-top:2px">${mainSub}</div>
       </div>
       <div class="vice-info" onclick="toggleVicePanel(${v.id})">
         <div class="vice-name">${v.emoji} ${esc(v.name)}</div>
         <div class="vice-sub">${streakLabel}</div>
       </div>
-      <div class="vice-dot ${slipped?'slipped':streak>0?'clean':'untouched'}"></div>
+      <div class="vice-dot ${slipped?'slipped':st.streak>0?'clean':'untouched'}"></div>
     </div>
     <div class="slip-panel${isOpen?' op':''}">
       ${slipped
@@ -1082,7 +1098,7 @@ function renderViceAdmin(){
 async function addVice(){
   const inp=document.getElementById('nvn'),name=inp.value.trim();
   if(!name){inp.focus();return;}
-  const v={id:Date.now(),name,emoji:selEmoji,sort_order:vices.length,is_vice:true,active:true,type:'avoid'};
+  const v={id:Date.now(),name,emoji:selEmoji,sort_order:vices.length,active:true,type:'avoid',created_at:new Date().toISOString().slice(0,10)};
   vices.push(v);inp.value='';
   renderViceAdmin();
   try{await ups('habits',v);showToast('Vice added!');}catch(e){showToast('Sync failed');}
@@ -1105,7 +1121,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.25';
+const APP_VERSION='2026.03.17.26';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
