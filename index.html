@@ -309,10 +309,6 @@ create table logs (
   </nav>
 
   <div class="page active" id="pg-home">
-    <div class="manage-toggle" style="margin:calc(var(--safe-top) + 16px) 20px 0">
-      <button class="mt-btn on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button>
-      <button class="mt-btn" id="tt-vices" onclick="setTodayTab('vices')">Vices</button>
-    </div>
     <div id="today-habits-section">
     <div class="ph">
       <h1><span id="greet">Good morning</span><span class="sync-dot" id="sdot"></span></h1>
@@ -1138,11 +1134,24 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── Boot ──────────────────────────────────────────────────────────
 loadCfg();
+let _lastDate=new Date().toISOString().slice(0,10);
+function checkDateReset(){
+  const now=new Date().toISOString().slice(0,10);
+  if(now!==_lastDate){
+    _lastDate=now;
+    openPanels={};openVicePanels={};
+    renderHome();
+    if(typeof renderVices==='function')renderVices();
+  }
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDateReset();});
+window.addEventListener('focus',checkDateReset);
+setInterval(checkDateReset,60000);
 if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData();}
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.28';
+const APP_VERSION='2026.03.18.1';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
