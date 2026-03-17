@@ -393,7 +393,7 @@ const TYPES=[
   {id:'notes',label:'General notes',desc:'free text'}
 ];
 const MOODS=['😴','😐','🙂','😀','🔥'];
-let habits=[], logs={}, selEmoji=EMOJIS[0], selType='notes', statPeriod='day', openPanels={};
+let habits=[], logs={}, selEmoji=EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0;
 
 function todayKey(){return new Date().toISOString().slice(0,10);}
 function setSyncing(s){const d=document.getElementById('sdot');if(!d)return;d.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' err':'');}
@@ -712,17 +712,98 @@ async function addH(){
 document.getElementById('nhn').addEventListener('keydown',e=>{if(e.key==='Enter')addH();});
 
 // ── Render Stats ──────────────────────────────────────────────────
-function setStat(p,el){statPeriod=p;document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderStats();}
-function getDays(p){const t=new Date(),keys=[],n=p==='day'?1:p==='week'?7:30;for(let i=n-1;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);keys.push(d.toISOString().slice(0,10));}return keys;}
+function setStat(p,el){
+  statPeriod=p;
+  viewWeekOffset=0;
+  viewMonth=new Date().getMonth();
+  viewYear=new Date().getFullYear();
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderStats();
+}
+function getDays(p){
+  const keys=[];
+  if(p==='day'){keys.push(new Date().toISOString().slice(0,10));return keys;}
+  if(p==='week'){
+    const today=new Date();
+    const monday=new Date(today);
+    monday.setDate(today.getDate()-((today.getDay()+6)%7)+viewWeekOffset*7);
+    for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);keys.push(d.toISOString().slice(0,10));}
+    return keys;
+  }
+  if(p==='month'){
+    const daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
+    for(let i=1;i<=daysInMonth;i++){
+      const d=new Date(viewYear,viewMonth,i);
+      keys.push(d.toISOString().slice(0,10));
+    }
+    return keys;
+  }
+  return keys;
+}
+function getNavLabel(){
+  if(statPeriod==='week'){
+    const today=new Date();
+    const monday=new Date(today);
+    monday.setDate(today.getDate()-((today.getDay()+6)%7)+viewWeekOffset*7);
+    const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+    return monday.toLocaleDateString('en-NL',{day:'numeric',month:'short'})+' – '+sunday.toLocaleDateString('en-NL',{day:'numeric',month:'short',year:'numeric'});
+  }
+  if(statPeriod==='month'){
+    return new Date(viewYear,viewMonth,1).toLocaleDateString('en-NL',{month:'long',year:'numeric'});
+  }
+  return '';
+}
+function navPeriod(dir){
+  if(statPeriod==='week')viewWeekOffset+=dir;
+  if(statPeriod==='month'){
+    viewMonth+=dir;
+    if(viewMonth>11){viewMonth=0;viewYear++;}
+    if(viewMonth<0){viewMonth=11;viewYear--;}
+  }
+  renderStats();
+}
 function calcStreak(){let s=0;const t=new Date(),active=habits.filter(x=>x.active);if(!active.length)return 0;for(let i=0;i<365;i++){const d=new Date(t);d.setDate(d.getDate()-i);const log=logs[d.toISOString().slice(0,10)]||{};if(active.some(h=>log['d'+h.id]))s++;else if(i>0)break;}return s;}
 function renderStats(){
   const days=getDays(statPeriod),active=habits.filter(x=>x.active);
   let tp=0,td=0;const ph={};active.forEach(h=>{ph[h.id]={d:0,p:0};});
   days.forEach(day=>{const log=logs[day]||{};active.forEach(h=>{ph[h.id].p++;tp++;if(log['d'+h.id]){ph[h.id].d++;td++;}});});
-  const pct=tp>0?Math.round(td/tp*100):0,pl=statPeriod==='day'?'today':statPeriod==='week'?'this week':'this month';
+  const pct=tp>0?Math.round(td/tp*100):0,pl=statPeriod==='day'?'today':statPeriod==='week'?'this week':new Date(viewYear,viewMonth,1).toLocaleDateString('en-NL',{month:'long'});
   document.getElementById('scards').innerHTML=`<div class="sc"><div class="sl">Completion</div><div class="sv">${pct}%</div><div class="ss">${td}/${tp} ${pl}</div></div><div class="sc"><div class="sl">Day streak</div><div class="sv">${calcStreak()}</div><div class="ss">consecutive days</div></div><div class="sc"><div class="sl">Days tracked</div><div class="sv">${days.filter(d=>logs[d]).length}</div><div class="ss">out of ${days.length}</div></div><div class="sc"><div class="sl">Active habits</div><div class="sv">${active.length}</div><div class="ss">set for today</div></div>`;
   document.getElementById('bk').innerHTML=!active.length?`<p style="font-size:14px;color:var(--m);text-align:center;padding:14px 0">No active habits to show.</p>`:`<div class="bkt">Per habit</div>`+active.map(h=>{const p=ph[h.id].p>0?Math.round(ph[h.id].d/ph[h.id].p*100):0;return`<div class="brow"><span style="font-size:16px;width:22px;text-align:center">${h.emoji}</span><span style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)">${esc(h.name)}</span><div class="bbar"><div class="bbf" style="width:${p}%"></div></div><span class="bpct">${p}%</span></div>`;}).join('');
-  if(statPeriod!=='day'){document.getElementById('gdiv').style.display='block';const cols=statPeriod==='week'?7:5;document.getElementById('gwrap').innerHTML=`<div style="padding:0 20px;margin-bottom:8px;font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.06em">Daily view</div><div class="dgrid" style="grid-template-columns:repeat(${cols},1fr)">${days.map(day=>{const log=logs[day]||{},dn=active.filter(h=>log['d'+h.id]).length,label=new Date(day+'T12:00:00').getDate();let c='none';if(active.length){const r=dn/active.length;if(r===1)c='full';else if(r>0)c='part';}return`<div class="dc ${c}" onclick="openDayReport('${day}')">${label}</div>`;}).join('')}</div>`;}
+  if(statPeriod!=='day'){
+    document.getElementById('gdiv').style.display='block';
+    const cols=statPeriod==='week'?7:7;
+    const isFuture=(d)=>new Date(d+'T12:00:00')>new Date();
+    const today=new Date().toISOString().slice(0,10);
+    const navLabel=getNavLabel();
+    const isCurrentPeriod=(statPeriod==='week'&&viewWeekOffset===0)||(statPeriod==='month'&&viewMonth===new Date().getMonth()&&viewYear===new Date().getFullYear());
+    // for month view, add empty cells for day-of-week offset
+    let prefixCells='';
+    if(statPeriod==='month'){
+      const firstDay=new Date(viewYear,viewMonth,1).getDay();
+      const offset=(firstDay+6)%7; // Monday=0
+      for(let i=0;i<offset;i++)prefixCells+=`<div class="dc" style="opacity:0"></div>`;
+    }
+    const dayLabels=statPeriod==='week'?'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 20px;margin-bottom:4px">'+['Mo','Tu','We','Th','Fr','Sa','Su'].map(d=>`<div style="font-size:10px;color:var(--m);text-align:center">${d}</div>`).join('')+'</div>':'';
+    document.getElementById('gwrap').innerHTML=
+      `<div style="display:flex;align-items:center;padding:0 20px;margin-bottom:8px;gap:8px">
+        <button onclick="navPeriod(-1)" style="width:30px;height:30px;border:0.5px solid var(--b2);background:transparent;border-radius:var(--r8);cursor:pointer;color:var(--t);font-size:16px;display:flex;align-items:center;justify-content:center">‹</button>
+        <span style="flex:1;text-align:center;font-size:13px;font-weight:500;color:var(--t)">${navLabel}</span>
+        <button onclick="navPeriod(1)" ${isCurrentPeriod?'disabled style="width:30px;height:30px;border:0.5px solid var(--b);background:transparent;border-radius:var(--r8);cursor:default;color:var(--m);font-size:16px;display:flex;align-items:center;justify-content:center;opacity:0.3"':'style="width:30px;height:30px;border:0.5px solid var(--b2);background:transparent;border-radius:var(--r8);cursor:pointer;color:var(--t);font-size:16px;display:flex;align-items:center;justify-content:center"'}>›</button>
+      </div>
+      ${dayLabels}
+      <div class="dgrid" style="grid-template-columns:repeat(${cols},1fr)">
+        ${prefixCells}${days.map(day=>{
+          const log=logs[day]||{},dn=active.filter(h=>log['d'+h.id]).length,label=new Date(day+'T12:00:00').getDate();
+          const isToday=day===today;
+          let c='none';
+          if(!isFuture(day)&&active.length){const r=dn/active.length;if(r===1)c='full';else if(r>0)c='part';}
+          const todayRing=isToday&&c==='none'?'border:1.5px solid var(--acc);':'';
+          return`<div class="dc ${c}" style="${todayRing}${isFuture(day)?'opacity:0.3;cursor:default':''}" ${!isFuture(day)?`onclick="openDayReport('${day}')"`:''}>${label}</div>`;
+        }).join('')}
+      </div>`;
+  }
   else{document.getElementById('gdiv').style.display='none';document.getElementById('gwrap').innerHTML='';}
 }
 
@@ -817,7 +898,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.20';
+const APP_VERSION='2026.03.17.21';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
