@@ -309,11 +309,16 @@ create table logs (
   </nav>
 
   <div class="page active" id="pg-home">
-    <div id="today-habits-section">
-    <div class="ph">
+    <div class="ph" style="padding-bottom:0">
       <h1><span id="greet">Good morning</span><span class="sync-dot" id="sdot"></span></h1>
       <p id="tdate"></p>
     </div>
+    <div class="manage-toggle" style="margin:14px 20px 0">
+      <button class="mt-btn on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button>
+      <button class="mt-btn" id="tt-vices" onclick="setTodayTab('vices')">Vices</button>
+    </div>
+    <div id="today-habits-section">
+    <div style="height:14px"></div>
     <div class="pbar" id="pbwrap" style="display:none">
       <div class="pbrow"><span id="ptxt"></span><span id="ppct"></span></div>
       <div class="pbbg"><div class="pbfill" id="pfill" style="width:0%"></div></div>
@@ -1135,11 +1140,16 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // ── Boot ──────────────────────────────────────────────────────────
 loadCfg();
 let _lastDate=new Date().toISOString().slice(0,10);
-function checkDateReset(){
+async function checkDateReset(){
   const now=new Date().toISOString().slice(0,10);
   if(now!==_lastDate){
     _lastDate=now;
     openPanels={};openVicePanels={};
+    // Reload fresh logs from DB so new day is empty
+    try{
+      const rows=await sel('logs','order=date.desc&limit=90');
+      logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
+    }catch(e){}
     renderHome();
     if(typeof renderVices==='function')renderVices();
   }
@@ -1151,7 +1161,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.1';
+const APP_VERSION='2026.03.18.2';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
