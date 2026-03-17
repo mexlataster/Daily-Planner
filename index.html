@@ -123,6 +123,28 @@ html,body{height:100%;background:#f5f5f3;font-family:'DM Sans',sans-serif}
 
 /* ADMIN */
 .alist{padding:0 20px;display:flex;flex-direction:column;gap:8px}
+/* VICES */
+.vice-card{background:var(--card);border:0.5px solid var(--b);border-radius:var(--r16);padding:16px 18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;user-select:none;transition:all .2s}
+.vice-card.clean{background:#0a2e20;border-color:#0f4a32}
+.vice-card.slipped{background:rgba(216,90,48,.08);border-color:rgba(216,90,48,.3)}
+.vice-streak{font-family:"Fraunces",serif;font-size:32px;font-weight:600;line-height:1;color:var(--accd)}
+.vice-streak.slipped{color:#D85A30}
+.vice-info{flex:1;min-width:0}
+.vice-name{font-size:16px;font-weight:500;color:var(--t)}
+.vice-sub{font-size:12px;color:var(--m);margin-top:2px}
+.vice-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.vice-dot.clean{background:var(--acc)}
+.vice-dot.slipped{background:#D85A30}
+.vice-dot.untouched{background:var(--b2)}
+.slip-panel{border-top:0.5px solid var(--b);padding:14px 16px;background:var(--bg);display:none}
+.slip-panel.op{display:block}
+.slip-confirm{background:rgba(216,90,48,.1);border:0.5px solid rgba(216,90,48,.3);border-radius:var(--r12);padding:14px;margin-bottom:10px;text-align:center}
+.slip-confirm p{font-size:14px;color:var(--t);margin-bottom:12px;line-height:1.5}
+.slip-btn{padding:10px 20px;background:#D85A30;color:white;border:none;border-radius:var(--r8);font-family:"DM Sans",sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-right:8px}
+.clean-btn{padding:10px 20px;background:transparent;color:var(--m);border:0.5px solid var(--b2);border-radius:var(--r8);font-family:"DM Sans",sans-serif;font-size:14px;cursor:pointer}
+.manage-toggle{display:flex;background:var(--bg);border-radius:99px;border:0.5px solid var(--b);padding:3px;margin:0 20px 16px}
+.mt-btn{flex:1;padding:8px 12px;border:none;background:transparent;border-radius:99px;font-family:"DM Sans",sans-serif;font-size:13px;font-weight:500;color:var(--m);cursor:pointer;transition:all .15s}
+.mt-btn.on{background:var(--card);color:var(--t);box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .drag-handle{width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:grab;flex-shrink:0;opacity:0.35;touch-action:none}
 .counter-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .counter-val{font-family:'Fraunces',serif;font-size:32px;font-weight:600;color:var(--accd);min-width:48px;text-align:center;line-height:1}
@@ -278,6 +300,9 @@ create table logs (
     <button class="nb on" onclick="nav('home')" id="nb-home">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Today
     </button>
+    <button class="nb" onclick="nav('vices')" id="nb-vices">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>Vices
+    </button>
     <button class="nb" onclick="nav('admin')" id="nb-admin">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Manage
     </button>
@@ -298,10 +323,41 @@ create table logs (
     <div class="hlist" id="hlist"></div>
   </div>
 
+  <div class="page" id="pg-vices">
+    <div class="ph">
+      <h1>Vices</h1>
+      <p id="vices-subtitle">Track what you're avoiding.</p>
+    </div>
+    <div id="vices-list" style="padding:0 20px"></div>
+    <div id="vices-empty" style="display:none" class="es">
+      <div class="ebi">🧘</div>
+      <p>No vices tracked yet.<br>Add some in Manage → Vices.</p>
+      <button onclick="nav('admin');setManageTab('vices')">Add vices</button>
+    </div>
+  </div>
+
   <div class="page" id="pg-admin">
-    <div class="ph"><h1>Your habits</h1><p>Manage and toggle habits for today.</p></div>
+    <div class="ph"><h1>Manage</h1><p>Toggle habits and manage your vices.</p></div>
+    <div class="manage-toggle">
+      <button class="mt-btn on" id="mt-habits" onclick="setManageTab('habits')">Habits</button>
+      <button class="mt-btn" id="mt-vices" onclick="setManageTab('vices')">Vices</button>
+    </div>
+    <div id="manage-habits-section">
     <p class="anote" id="anote"></p>
     <div class="alist" id="alist"></div>
+    </div><!-- end manage-habits-form -->
+    </div><!-- end manage-habits-section -->
+    <div id="manage-vices-section" style="display:none">
+      <p class="anote" id="vices-manage-note"></p>
+      <div class="alist" id="vices-alist"></div>
+      <div class="af">
+        <div class="aft">Add new vice</div>
+        <div class="epick" id="vepick"></div>
+        <div class="afrow"><input type="text" id="nvn" placeholder="e.g. Weed, Alcohol, Smoking..." maxlength="32"/></div>
+        <button class="addb" onclick="addVice()">Add vice</button>
+      </div>
+    </div>
+    <div id="manage-habits-form">
     <div class="af">
       <div class="aft">Add new habit</div>
       <div class="epick" id="epick"></div>
@@ -393,7 +449,7 @@ const TYPES=[
   {id:'notes',label:'General notes',desc:'free text'}
 ];
 const MOODS=['😴','😐','🙂','😀','🔥'];
-let habits=[], logs={}, selEmoji=EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0;
+let habits=[], logs={}, vices=[], selEmoji=EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0, manageTab='habits', openVicePanels={};
 
 function todayKey(){return new Date().toISOString().slice(0,10);}
 function setSyncing(s){const d=document.getElementById('sdot');if(!d)return;d.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' err':'');}
@@ -416,12 +472,14 @@ async function loadData(){
   document.getElementById('loading').classList.remove('hidden');
   document.getElementById('app').style.display='none';
   try{
-    habits=await sel('habits','order=sort_order.asc,id.asc');
+    const allHabits=await sel('habits','order=sort_order.asc,id.asc');
+    habits=allHabits.filter(h=>h.type!=='avoid');
+    vices=allHabits.filter(h=>h.type==='avoid');
     const rows=await sel('logs','order=date.desc&limit=90');
     logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('app').style.display='block';
-    renderHome();renderAdmin();
+    renderHome();renderAdmin();renderViceAdmin();
   }catch(e){
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('setup').classList.remove('hidden');
@@ -910,7 +968,111 @@ function openDayReport(dateKey){
 function closeDayReport(){
   document.getElementById('day-report').classList.remove('open');
 }
-function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('active');document.getElementById('nb-'+p).classList.add('on');if(p==='home')renderHome();if(p==='admin')renderAdmin();if(p==='stats')renderStats();}
+// ── Vice helpers ─────────────────────────────────────────────────
+function calcViceStreak(id){
+  let streak=0;
+  const today=new Date();
+  for(let i=0;i<365;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const key=d.toISOString().slice(0,10);
+    const log=logs[key]||{};
+    if(log['slip'+id])break;
+    streak++;
+  }
+  return streak;
+}
+function toggleVicePanel(id){openVicePanels[id]=!openVicePanels[id];renderVices();}
+
+async function logSlip(id){
+  const k=todayKey();if(!logs[k])logs[k]={};
+  logs[k]['slip'+id]=true;
+  openVicePanels[id]=false;
+  renderVices();setSyncing('syncing');
+  saveLog(k).then(()=>{setSyncing('');showToast('Logged.');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
+}
+async function undoSlip(id){
+  const k=todayKey();if(!logs[k])return;
+  delete logs[k]['slip'+id];
+  openVicePanels[id]=false;
+  renderVices();setSyncing('syncing');
+  saveLog(k).then(()=>{setSyncing('');showToast('Undone!');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
+}
+
+function renderVices(){
+  const k=todayKey(),log=logs[k]||{};
+  const el=document.getElementById('vices-list');
+  const empty=document.getElementById('vices-empty');
+  if(!el)return;
+  if(!vices.length){el.style.display='none';if(empty)empty.style.display='block';return;}
+  el.style.display='block';if(empty)empty.style.display='none';
+
+  const cleanCount=vices.filter(v=>!log['slip'+v.id]).length;
+  const sub=document.getElementById('vices-subtitle');
+  if(sub)sub.textContent=cleanCount===vices.length?'Clean today — keep it up! 💪':cleanCount+' of '+vices.length+' clean today.';
+
+  el.innerHTML=vices.map(v=>{
+    const slipped=!!log['slip'+v.id];
+    const streak=calcViceStreak(v.id);
+    const isOpen=!!openVicePanels[v.id];
+    const statusClass=slipped?'slipped':'clean';
+    const streakLabel=slipped?'slipped today':streak===0?'start your streak':streak===1?'1 day clean':streak+' days clean';
+    return`<div class="vice-card ${statusClass}">
+      <div style="text-align:center;min-width:52px">
+        <div class="vice-streak${slipped?' slipped':''}">${slipped?'✗':streak}</div>
+        <div style="font-size:10px;color:var(--m);margin-top:2px">${slipped?'today':'days'}</div>
+      </div>
+      <div class="vice-info" onclick="toggleVicePanel(${v.id})">
+        <div class="vice-name">${v.emoji} ${esc(v.name)}</div>
+        <div class="vice-sub">${streakLabel}</div>
+      </div>
+      <div class="vice-dot ${slipped?'slipped':streak>0?'clean':'untouched'}"></div>
+    </div>
+    <div class="slip-panel${isOpen?' op':''}">
+      ${slipped
+        ?`<div class="slip-confirm"><p>You logged a slip today.</p><button class="clean-btn" onclick="undoSlip(${v.id})">Undo — I didn't slip</button></div>`
+        :`<div class="slip-confirm"><p>Did you slip with <strong>${esc(v.name)}</strong> today?</p><button class="slip-btn" onclick="logSlip(${v.id})">Yes, I slipped</button><button class="clean-btn" onclick="toggleVicePanel(${v.id})">Cancel</button></div>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function setManageTab(tab){
+  manageTab=tab;
+  document.getElementById('mt-habits').classList.toggle('on',tab==='habits');
+  document.getElementById('mt-vices').classList.toggle('on',tab==='vices');
+  document.getElementById('manage-habits-section').style.display=tab==='habits'?'block':'none';
+  document.getElementById('manage-vices-section').style.display=tab==='vices'?'block':'none';
+}
+
+function renderViceAdmin(){
+  document.getElementById('vices-manage-note').textContent=vices.length+' vice'+(vices.length!==1?'s':'')+' tracked';
+  document.getElementById('vices-alist').innerHTML=vices.map(v=>`
+    <div class="ai">
+      <span class="aiem">${v.emoji}</span>
+      <div class="aiinf"><div class="ain">${esc(v.name)}</div><div class="ait">Avoid habit</div></div>
+      <button class="delb" onclick="delVice(${v.id})">×</button>
+    </div>`).join('')||`<div style="text-align:center;padding:24px;color:var(--m);font-size:14px">No vices yet — add one below.</div>`;
+  document.getElementById('vepick').innerHTML=EMOJIS.map(e=>`<button class="eb${e===selEmoji?' on':''}" onclick="pickE('${e}')">${e}</button>`).join('');
+}
+
+async function addVice(){
+  const inp=document.getElementById('nvn'),name=inp.value.trim();
+  if(!name){inp.focus();return;}
+  const v={id:Date.now(),name,emoji:selEmoji,sort_order:vices.length,is_vice:true,active:true,type:'avoid'};
+  vices.push(v);inp.value='';
+  renderViceAdmin();
+  try{await ups('habits',v);showToast('Vice added!');}catch(e){showToast('Sync failed');}
+}
+async function delVice(id){
+  vices=vices.filter(x=>x.id!==id);renderViceAdmin();
+  try{await del('habits','id',id);}catch(e){showToast('Sync failed');}
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const nvn=document.getElementById('nvn');
+  if(nvn)nvn.addEventListener('keydown',e=>{if(e.key==='Enter')addVice();});
+});
+
+function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('active');document.getElementById('nb-'+p).classList.add('on');if(p==='home')renderHome();if(p==='vices')renderVices();if(p==='admin'){renderAdmin();renderViceAdmin();setManageTab(manageTab);}if(p==='stats')renderStats();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 
 // ── Boot ──────────────────────────────────────────────────────────
@@ -919,7 +1081,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.22';
+const APP_VERSION='2026.03.17.23';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);

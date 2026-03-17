@@ -1,4 +1,4 @@
-const VERSION = '2026.03.17.22';
+const VERSION = '2026.03.17.23';
 const CACHE = 'habits-' + VERSION;
 
 self.addEventListener('install', e => {
