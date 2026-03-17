@@ -518,6 +518,15 @@ function setSessionMood(id,i){
   pendingMoods[id]=i;
   document.querySelectorAll('.smb'+id).forEach((b,j)=>b.classList.toggle('on',j===i));
 }
+async function removeToday(id){
+  const k=todayKey();if(!logs[k])return;
+  delete logs[k]['tod'+id];
+  delete logs[k]['d'+id];
+  delete logs[k]['det'+id];
+  setSyncing('syncing');
+  try{await saveLog(k);setSyncing('');}catch(e){setSyncing('err');}
+  renderHome();
+}
 async function addToday(id){
   const h=habits.find(x=>x.id===id);if(!h)return;
   const k=todayKey();if(!logs[k])logs[k]={};
@@ -614,11 +623,13 @@ function renderHome(){
   document.getElementById('ppct').textContent=pct+'%';
   document.getElementById('pfill').style.width=pct+'%';
   const inactive=habits.filter(x=>!x.active&&!log['tod'+x.id]);
-  const todayExtra=habits.filter(x=>!x.active&&log['tod'+x.id]);
+  const todayExtra=habits.filter(x=>!x.active&&!!log['tod'+x.id]);
   const allToday=[...active,...todayExtra];
   list.innerHTML=allToday.map(habit=>{
     const isDone=!!log['d'+habit.id],isOpen=!!openPanels[habit.id];
-    return`<div class="hi${isDone?' done':''}"><div class="hrow"><div class="hchk" onclick="toggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="toggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div><button class="dbt${isOpen?' op':''}" onclick="togglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildPanel(habit,log)}</div></div>`;
+    const isExtra=!habit.active&&!!log['tod'+habit.id];
+    const removeBtn=isExtra?`<button onclick="removeToday(${habit.id})" style="width:26px;height:26px;border:0.5px solid var(--b2);background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:14px;flex-shrink:0;margin-right:2px">×</button>`:'';
+    return`<div class="hi${isDone?' done':''}"><div class="hrow"><div class="hchk" onclick="toggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="toggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div>${removeBtn}<button class="dbt${isOpen?' op':''}" onclick="togglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildPanel(habit,log)}</div></div>`;
   }).join('')+(inactive.length?`<div style="margin-top:6px;padding:0 2px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;font-weight:500">Not planned today</div>${inactive.map(habit=>`<div class="hi inactive" style="margin-bottom:8px"><div class="hrow"><span class="hem">${habit.emoji}</span><div class="hinf"><div class="hn">${esc(habit.name)}</div></div><button class="add-today-btn" onclick="addToday(${habit.id})">+ add today</button></div></div>`).join('')}</div>`:'');
 }
 
@@ -806,7 +817,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.19';
+const APP_VERSION='2026.03.17.20';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
