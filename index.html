@@ -300,9 +300,6 @@ create table logs (
     <button class="nb on" onclick="nav('home')" id="nb-home">
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Today
     </button>
-    <button class="nb" onclick="nav('vices')" id="nb-vices">
-      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>Vices
-    </button>
     <button class="nb" onclick="nav('admin')" id="nb-admin">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Manage
     </button>
@@ -312,6 +309,11 @@ create table logs (
   </nav>
 
   <div class="page active" id="pg-home">
+    <div class="manage-toggle" style="margin:calc(var(--safe-top) + 16px) 20px 0">
+      <button class="mt-btn on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button>
+      <button class="mt-btn" id="tt-vices" onclick="setTodayTab('vices')">Vices</button>
+    </div>
+    <div id="today-habits-section">
     <div class="ph">
       <h1><span id="greet">Good morning</span><span class="sync-dot" id="sdot"></span></h1>
       <p id="tdate"></p>
@@ -321,9 +323,19 @@ create table logs (
       <div class="pbbg"><div class="pbfill" id="pfill" style="width:0%"></div></div>
     </div>
     <div class="hlist" id="hlist"></div>
+    </div><!-- end today-habits-section -->
+    <div id="today-vices-section" style="display:none">
+      <div class="ph"><h1 id="vices-greeting">Good morning</h1><p id="vices-subtitle">Track what you're avoiding.</p></div>
+      <div id="vices-list" style="padding:0 20px"></div>
+      <div id="vices-empty" style="display:none" class="es">
+        <div class="ebi">🧘</div>
+        <p>No vices tracked yet.<br>Go to Manage → Vices to add some.</p>
+        <button onclick="nav('admin');setManageTab('vices')">Add vices</button>
+      </div>
+    </div>
   </div>
 
-  <div class="page" id="pg-vices">
+  <div class="page" id="pg-vices-old" style="display:none">
     <div class="ph">
       <h1>Vices</h1>
       <p id="vices-subtitle">Track what you're avoiding.</p>
@@ -1000,6 +1012,7 @@ function renderVices(){
   const el=document.getElementById('vices-list');
   const empty=document.getElementById('vices-empty');
   if(!el)return;
+  if(!el)return;
   if(!vices.length){el.style.display='none';if(empty)empty.style.display='block';return;}
   el.style.display='block';if(empty)empty.style.display='none';
 
@@ -1033,6 +1046,20 @@ function renderVices(){
   }).join('');
 }
 
+let todayTab='habits';
+function setTodayTab(tab){
+  todayTab=tab;
+  document.getElementById('tt-habits').classList.toggle('on',tab==='habits');
+  document.getElementById('tt-vices').classList.toggle('on',tab==='vices');
+  document.getElementById('today-habits-section').style.display=tab==='habits'?'block':'none';
+  document.getElementById('today-vices-section').style.display=tab==='vices'?'block':'none';
+  if(tab==='vices'){
+    const now=new Date(),h=now.getHours();
+    const g=document.getElementById('vices-greeting');
+    if(g)g.textContent=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+    renderVices();
+  }
+}
 function setManageTab(tab){
   manageTab=tab;
   document.getElementById('mt-habits').classList.toggle('on',tab==='habits');
@@ -1069,7 +1096,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   if(nvn)nvn.addEventListener('keydown',e=>{if(e.key==='Enter')addVice();});
 });
 
-function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('active');document.getElementById('nb-'+p).classList.add('on');if(p==='home')renderHome();if(p==='vices')renderVices();if(p==='admin'){renderAdmin();renderViceAdmin();setManageTab(manageTab);}if(p==='stats')renderStats();}
+function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('active');document.getElementById('nb-'+p).classList.add('on');if(p==='home'){setTodayTab(todayTab);renderHome();}if(p==='admin'){renderAdmin();renderViceAdmin();setManageTab(manageTab);}if(p==='stats')renderStats();}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 
 // ── Boot ──────────────────────────────────────────────────────────
@@ -1078,7 +1105,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.24';
+const APP_VERSION='2026.03.17.25';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
