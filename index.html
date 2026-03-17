@@ -492,14 +492,16 @@ async function addShopItem(id){
   const inp=document.getElementById('shopinput'+id);
   const text=inp?.value.trim();if(!text)return;
   const k=todayKey();if(!logs[k])logs[k]={};
-  if(!logs[k]['det'+id])logs[k]['det'+id]={items:[]};
+  if(!logs[k]['det'+id]||!logs[k]['det'+id].items){logs[k]['det'+id]={items:[]};}
+  if(!Array.isArray(logs[k]['det'+id].items))logs[k]['det'+id].items=[];
   logs[k]['det'+id].items.push({text,done:false});
   inp.value='';
   renderHome();openPanels[id]=true;
   saveLog(k).catch(()=>showToast('Sync failed'));
 }
 async function toggleShopItem(id,idx){
-  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  const k=todayKey();if(!logs[k])return;
+  if(!logs[k]['det'+id]||!Array.isArray(logs[k]['det'+id].items))return;
   const items=logs[k]['det'+id].items||[];
   if(!items[idx])return;
   items[idx].done=!items[idx].done;
@@ -685,7 +687,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.13';
+const APP_VERSION='2026.03.17.14';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
