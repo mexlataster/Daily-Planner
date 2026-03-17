@@ -326,7 +326,12 @@ async function sel(table,q=''){
 }
 async function ups(table,data){
   const {error}=await getClient().from(table).upsert(data,{onConflict:table==='habits'?'id':'date'});
-  if(error)throw new Error(error.message);
+  if(error){console.error('ups error:',error);throw new Error(error.message);}
+}
+async function saveLog(k){
+  const logData={date:k,data:logs[k]||{}};
+  const {error}=await getClient().from('logs').upsert(logData,{onConflict:'date'});
+  if(error){console.error('saveLog error:',error);throw new Error(error.message);}
 }
 async function del(table,col,val){
   const {error}=await getClient().from(table).delete().eq(col,val);
@@ -430,6 +435,9 @@ async function saveDetail(id){
     }
     logs[k]['det'+id]={sessions};
     if(sessions.length>0)logs[k]['d'+id]=true;
+    openPanels[id]=false;renderHome();setSyncing('syncing');
+    saveLog(k).then(()=>{setSyncing('');showToast('Session saved!');}).catch(e=>{setSyncing('err');showToast('Sync failed');});
+    return;
   }else if(h.type==='reading'){logs[k]['det'+id]={book:g('rb'),pages:g('rp')};
   }else if(h.type==='cycling'){logs[k]['det'+id]={dist:g('cd'),time:g('ct'),hr:g('chr')};
   }else if(h.type==='racket'){logs[k]['det'+id]={time:g('ptime'),score:g('pscore'),opponent:g('popp'),notes:g('pnotes')};
@@ -438,8 +446,8 @@ async function saveDetail(id){
   }else if(h.type==='shopping'){logs[k]['det'+id]={list:g('sl'),notes:g('sn')};
   }else{logs[k]['det'+id]={notes:g('gn')};}
   openPanels[id]=false;renderHome();setSyncing('syncing');
-  try{await ups('logs',{date:k,data:logs[k]});setSyncing('');showToast('Saved!');}
-  catch(e){setSyncing('err');showToast('Sync failed');}
+  try{await saveLog(k);setSyncing('');showToast('Saved!');}
+  catch(e){setSyncing('err');showToast('Sync failed: '+e.message);console.error(e);}
 }
 
 function incrCounter(id,delta){
@@ -448,13 +456,13 @@ function incrCounter(id,delta){
   const h=habits.find(x=>x.id===id);if(!h)return;
   if(!logs[k]['det'+id])logs[k]['det'+id]={count:0};
   const target=h.target||1;
-  const prev=logs[k]['det'+id].count||0;
-  logs[k]['det'+id].count=Math.max(0,Math.min(target,prev+delta));
-  logs[k]['d'+id]=logs[k]['det'+id].count>=target;
-  const logCopy=JSON.parse(JSON.stringify(logs[k]));
-  setSyncing('syncing');
-  ups('logs',{date:k,data:logCopy}).then(()=>{setSyncing('');showToast(logs[k]['det'+id].count+'/'+target);}).catch(e=>{setSyncing('err');showToast('Sync failed');});
+  const prev=Number(logs[k]['det'+id].count)||0;
+  const next=Math.max(0,Math.min(target,prev+delta));
+  logs[k]['det'+id].count=next;
+  logs[k]['d'+id]=next>=target;
   renderHome();
+  setSyncing('syncing');
+  saveLog(k).then(()=>{setSyncing('');showToast(next+' / '+target);}).catch(e=>{setSyncing('err');showToast('Sync failed: '+e.message);console.error(e);});
 }
 const pendingMoods={};
 function setSessionMood(id,i){
@@ -633,7 +641,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.6';
+const APP_VERSION='2026.03.17.7';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
