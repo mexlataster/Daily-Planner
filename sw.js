@@ -1,4 +1,4 @@
-const VERSION = '2026.03.17.16';
+const VERSION = '2026.03.17.22';
 const CACHE = 'habits-' + VERSION;
 
 self.addEventListener('install', e => {
@@ -7,9 +7,11 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll())
+      .then(clients => clients.forEach(c => c.postMessage({type:'UPDATED'})))
   );
 });
 
@@ -25,7 +27,6 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // For the main HTML — always network first, fall back to cache
   e.respondWith(
     fetch(e.request, { cache: 'no-store' })
       .then(r => {
