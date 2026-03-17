@@ -430,9 +430,9 @@ async function saveDetail(id){
   }else if(h.type==='yoga'){
     if(!logs[k]['det'+id])logs[k]['det'+id]={sessions:[]};
     const sessions=logs[k]['det'+id].sessions||[];
-    const hr=g('yhr'),mood=pendingMoods[id],notes=g('yn');
-    if(hr||typeof mood==='number'||notes){
-      sessions.push({hr,mood,notes,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});
+    const hr=g('yhr'),hre=g('yhre'),mood=pendingMoods[id],notes=g('yn');
+    if(hr||hre||typeof mood==='number'||notes){
+      sessions.push({hr,hre,mood,notes,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});
       delete pendingMoods[id];
       // clear inputs after save
     }
@@ -489,7 +489,7 @@ function getMeta(h,log){
   const d=log['det'+h.id],def=TYPES.find(t=>t.id===h.type)?.desc||'';
   if(!d)return def;
   if(h.type==='counter'){const cur=d.count||0,target=h.target||1;return cur+'/'+target+(cur>=target?' ✓':'');}
-  if(h.type==='yoga'){const sessions=d.sessions||[];if(sessions.length){const last=sessions[sessions.length-1];const p=[sessions.length+'x today'];if(last.hr)p.push('HR '+last.hr);if(typeof last.mood==='number')p.push(MOODS[last.mood]);return p.join(' · ');}return def;}
+  if(h.type==='yoga'){const sessions=d.sessions||[];if(sessions.length){const last=sessions[sessions.length-1];const p=[sessions.length+'x today'];if(last.hr||last.hre)p.push('HR '+(last.hr||'?')+'→'+(last.hre||'?'));if(typeof last.mood==='number')p.push(MOODS[last.mood]);return p.join(' · ');}return def;}
   if(h.type==='workout'&&d.sets?.length)return d.sets.map(s=>s.name).filter(Boolean).join(' · ')||def;
   if(h.type==='reading'){const p=[];if(d.book)p.push(d.book.slice(0,22));if(d.pages)p.push(d.pages+' pages');return p.join(' · ')||def;}
   if(h.type==='cycling'){const p=[];if(d.dist)p.push(d.dist+'km');if(d.time)p.push(d.time+'min');if(d.hr)p.push('HR '+d.hr);return p.join(' · ')||def;}
@@ -512,8 +512,8 @@ function buildPanel(h,log){
   if(h.type==='yoga'){
     const sessions=d.sessions||[];
     const pendingMood=pendingMoods[id];
-    const sessionHtml=sessions.map((s,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${s.hr?`<div style="font-size:13px;color:var(--m)">HR: <strong style="color:var(--t)">${s.hr}</strong></div>`:''}${typeof s.mood==='number'?`<div style="font-size:16px;margin-top:3px">${MOODS[s.mood]}</div>`:''}${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:3px">${esc(s.notes)}</div>`:''}</div>`).join('');
-    return`${sessions.length?`<div class="dst">Today's sessions (${sessions.length})</div><div class="session-list">${sessionHtml}</div>`:''}<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;font-weight:500">Add session</div><div class="fr"><label>Heart rate</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div style="font-size:12px;color:var(--m);margin-bottom:6px">How did it feel?</div><div class="mrow">${MOODS.map((m,i)=>`<button class="mb mb${id}${i===pendingMood?' on':''}" onclick="setYogaMood(${id},${i})">${m}</button>`).join('')}</div><div class="fr"><label>Notes</label><textarea id="yn${id}" placeholder="How was the session..."></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;
+    const sessionHtml=sessions.map((s,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre)?`<div style="font-size:13px;color:var(--m)">HR: <strong style="color:var(--t)">${s.hr||'?'}</strong> → <strong style="color:var(--t)">${s.hre||'?'}</strong></div>`:''}${typeof s.mood==='number'?`<div style="font-size:16px;margin-top:3px">${MOODS[s.mood]}</div>`:''}${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:3px">${esc(s.notes)}</div>`:''}</div>`).join('');
+    return`${sessions.length?`<div class="dst">Today's sessions (${sessions.length})</div><div class="session-list">${sessionHtml}</div>`:''}<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;font-weight:500">Add session</div><div class="fr"><label>HR begin</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div class="fr"><label>HR end</label><input type="number" id="yhre${id}" placeholder="bpm"/></div><div style="font-size:12px;color:var(--m);margin-bottom:6px">How did it feel?</div><div class="mrow">${MOODS.map((m,i)=>`<button class="mb mb${id}${i===pendingMood?' on':''}" onclick="setYogaMood(${id},${i})">${m}</button>`).join('')}</div><div class="fr"><label>Notes</label><textarea id="yn${id}" placeholder="How was the session..."></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;
   }
   if(h.type==='racket'){return`<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="e.g. 6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play with?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}" placeholder="How did it go?">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
   if(h.type==='swimming'){return`<div class="dst">Swim details</div><div class="fr"><label>Distance (m)</label><input type="number" id="sd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="st${id}" placeholder="0" value="${esc(d.time||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
@@ -648,7 +648,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.11';
+const APP_VERSION='2026.03.17.12';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
