@@ -796,7 +796,12 @@ async function saveSortOrder(){
   catch(e){showToast('Sync failed');}
 }
 function pickE(e){selEmoji=e;renderAdmin();}
-function pickVE(e){selViceEmoji=e;renderViceAdmin();}
+function pickVE(e){
+  selViceEmoji=e;
+  document.querySelectorAll('#vepick .eb').forEach(b=>{
+    b.classList.toggle('on', b.textContent===e);
+  });
+}
 function pickT(t){selType=t;renderAdmin();const w=document.getElementById('counter-target-wrap');if(w)w.style.display=t==='counter'?'block':'none';}
 async function toggleA(id){const h=habits.find(x=>x.id===id);if(!h)return;h.active=!h.active;renderAdmin();try{await ups('habits',{...h});}catch(e){showToast('Sync failed');}}
 async function delH(id){habits=habits.filter(x=>x.id!==id);renderAdmin();try{await del('habits','id',id);}catch(e){showToast('Sync failed');}}
@@ -1163,14 +1168,34 @@ async function checkDateReset(){
     if(typeof renderVices==='function')renderVices();
   }
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDateReset();});
+let _lastHidden=0;
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    _lastHidden=Date.now();
+  } else {
+    const away=Date.now()-_lastHidden;
+    // If away for more than 5 min, reload data from DB to ensure fresh state
+    if(away>5*60*1000 && URL_ && KEY_){
+      sel('logs','order=date.desc&limit=90').then(rows=>{
+        logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
+        const todayK=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
+        if(!logs[todayK])logs[todayK]={};
+        _lastDate=todayK;
+        renderHome();
+        if(typeof renderVices==='function')renderVices();
+      }).catch(()=>{});
+    } else {
+      checkDateReset();
+    }
+  }
+});
 window.addEventListener('focus',checkDateReset);
 setInterval(checkDateReset,60000);
 if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData();}
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.4';
+const APP_VERSION='2026.03.18.5';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
