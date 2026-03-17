@@ -1145,6 +1145,10 @@ function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 
 // ── Boot ──────────────────────────────────────────────────────────
+window.onerror=function(msg,src,line,col,err){
+  console.error('App error:',msg,'at line',line);
+  return false;
+};
 loadCfg();
 let _lastDate=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
 async function checkDateReset(){
@@ -1188,7 +1192,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.6';
+const APP_VERSION='2026.03.18.7';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
@@ -1199,13 +1203,17 @@ if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
 
 // Register service worker for PWA
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    location.reload();
-  });
-  navigator.serviceWorker.addEventListener('message',e=>{
-    if(e.data&&e.data.type==='UPDATED')location.reload();
-  });
+  try{
+    navigator.serviceWorker.register('/sw.js').then(r=>{
+      // ok
+    }).catch(e=>{
+      console.log('SW not available:', e.message);
+    });
+    navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload());
+    navigator.serviceWorker.addEventListener('message',e=>{
+      if(e.data&&e.data.type==='UPDATED')location.reload();
+    });
+  }catch(e){console.log('SW error:',e);}
 }
 </script>
 </body>
