@@ -343,10 +343,18 @@ create table logs (
       <button class="mt-btn" id="mt-vices" onclick="setManageTab('vices')">Vices</button>
     </div>
     <div id="manage-habits-section">
-    <p class="anote" id="anote"></p>
-    <div class="alist" id="alist"></div>
-    </div><!-- end manage-habits-form -->
-    </div><!-- end manage-habits-section -->
+      <p class="anote" id="anote"></p>
+      <div class="alist" id="alist"></div>
+      <div class="af">
+        <div class="aft">Add new habit</div>
+        <div class="epick" id="epick"></div>
+        <div class="afrow"><input type="text" id="nhn" placeholder="e.g. Yoga, Swimming..." maxlength="32"/></div>
+        <div style="font-size:11px;color:var(--m);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;font-weight:500">Tracking type</div>
+        <div class="tgrid" id="tgrid"></div>
+        <div id="counter-target-wrap" style="display:none;margin-bottom:9px"><div style="font-size:11px;color:var(--m);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;font-weight:500">Daily target (how many per day?)</div><input type="number" id="new-target" min="1" max="99" value="1" style="width:80px;padding:8px 10px;border:0.5px solid var(--b2);border-radius:var(--r8);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t);outline:none"/></div>
+        <button class="addb" onclick="addH()">Add habit</button>
+      </div>
+    </div>
     <div id="manage-vices-section" style="display:none">
       <p class="anote" id="vices-manage-note"></p>
       <div class="alist" id="vices-alist"></div>
@@ -357,17 +365,6 @@ create table logs (
         <button class="addb" onclick="addVice()">Add vice</button>
       </div>
     </div>
-    <div id="manage-habits-form">
-    <div class="af">
-      <div class="aft">Add new habit</div>
-      <div class="epick" id="epick"></div>
-      <div class="afrow"><input type="text" id="nhn" placeholder="e.g. Yoga, Swimming..." maxlength="32"/></div>
-      <div style="font-size:11px;color:var(--m);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;font-weight:500">Tracking type</div>
-      <div class="tgrid" id="tgrid"></div>
-      <div id="counter-target-wrap" style="display:none;margin-bottom:9px"><div style="font-size:11px;color:var(--m);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;font-weight:500">Daily target (how many per day?)</div><input type="number" id="new-target" min="1" max="99" value="1" style="width:80px;padding:8px 10px;border:0.5px solid var(--b2);border-radius:var(--r8);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t);outline:none"/></div>
-<button class="addb" onclick="addH()">Add habit</button>
-    </div>
-  </div>
 
   <!-- DAY REPORT OVERLAY -->
   <div class="day-report" id="day-report">
@@ -1081,7 +1078,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.23';
+const APP_VERSION='2026.03.17.24';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
