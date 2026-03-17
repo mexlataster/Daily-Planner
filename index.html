@@ -980,24 +980,33 @@ function closeDayReport(){
 // ── Vice helpers ─────────────────────────────────────────────────
 function calcViceStats(v){
   const today=new Date();
-  const todayKey2=today.toISOString().slice(0,10);
-  const startDate=v.created_at?new Date(v.created_at+'T12:00:00'):new Date(todayKey2+'T12:00:00');
-  let total=0,slips=0,currentStreak=0,countingStreak=true;
+  const todayStr=today.toISOString().slice(0,10);
+  const startDate=v.created_at?new Date(v.created_at+'T12:00:00'):new Date(todayStr+'T12:00:00');
+  let total=0,slips=0,confirmed=0,currentStreak=0,countingStreak=true;
   const d=new Date(today);
-  // Walk from today back to created_at
   while(d>=startDate){
     const key=d.toISOString().slice(0,10);
     const log=logs[key]||{};
     total++;
     if(log['slip'+v.id]){slips++;countingStreak=false;}
-    else if(countingStreak)currentStreak++;
+    else if(log['clean'+v.id]){confirmed++;if(countingStreak)currentStreak++;}
+    else{countingStreak=false;} // unconfirmed = breaks streak
     d.setDate(d.getDate()-1);
   }
-  const cleanDays=total-slips;
-  return{streak:currentStreak,total,slips,cleanDays};
+  const todayLog=logs[todayStr]||{};
+  const todayStatus=todayLog['slip'+v.id]?'slipped':todayLog['clean'+v.id]?'clean':'unknown';
+  return{streak:currentStreak,total,slips,confirmed,todayStatus};
 }
 function toggleVicePanel(id){openVicePanels[id]=!openVicePanels[id];renderVices();}
 
+async function logClean(id){
+  const k=todayKey();if(!logs[k])logs[k]={};
+  logs[k]['clean'+id]=true;
+  delete logs[k]['slip'+id];
+  openVicePanels[id]=false;
+  renderVices();setSyncing('syncing');
+  saveLog(k).then(()=>{setSyncing('');showToast('Marked clean! 💪');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
+}
 async function logSlip(id){
   const k=todayKey();if(!logs[k])logs[k]={};
   logs[k]['slip'+id]=true;
@@ -1023,40 +1032,52 @@ function renderVices(){
   el.style.display='block';if(empty)empty.style.display='none';
 
   const cleanCount=vices.filter(v=>!log['slip'+v.id]).length;
+  const confirmedToday=vices.filter(v=>log['clean'+v.id]).length;
+  const slippedToday=vices.filter(v=>log['slip'+v.id]).length;
   const sub=document.getElementById('vices-subtitle');
-  if(sub)sub.textContent=cleanCount===vices.length?'Clean today — keep it up! 💪':cleanCount+' of '+vices.length+' clean today.';
+  if(sub){
+    if(slippedToday>0)sub.textContent=slippedToday+' slip'+(slippedToday>1?'s':'')+' today. Keep pushing.';
+    else if(confirmedToday===vices.length)sub.textContent='All clean today — great work! 💪';
+    else if(confirmedToday>0)sub.textContent=confirmedToday+' of '+vices.length+' confirmed clean.';
+    else sub.textContent='Tap a vice to log today's status.';
+  }
 
   el.innerHTML=vices.map(v=>{
-    const slipped=!!log['slip'+v.id];
     const st=calcViceStats(v);
     const isOpen=!!openVicePanels[v.id];
-    const statusClass=slipped?'slipped':'clean';
-    let streakLabel,mainNum,mainSub;
-    if(st.total<=1){
-      mainNum=slipped?'✗':'✓';mainSub=slipped?'today':'day 1';
-      streakLabel=slipped?'slipped today — restart tomorrow':'first day — keep going!';
-    } else if(slipped){
-      mainNum=st.cleanDays;mainSub='/ '+st.total+' days';
-      streakLabel=st.cleanDays+' out of '+st.total+' days clean';
+    const s=st.todayStatus;
+    const cardBg=s==='clean'?'background:#0a2e20;border-color:#0f4a32':s==='slipped'?'background:rgba(216,90,48,.08);border-color:rgba(216,90,48,.3)':'';
+    let mainNum,mainSub,streakLabel,dotClass;
+    if(s==='unknown'){
+      mainNum=st.streak||'?';mainSub=st.streak>0?'streak':'days';
+      streakLabel=st.confirmed+' confirmed · '+st.slips+' slips';
+      dotClass='untouched';
+    } else if(s==='clean'){
+      mainNum=st.streak;mainSub=st.streak===1?'day':'days';
+      streakLabel=st.confirmed+' / '+st.total+' days confirmed'+(st.slips>0?' · '+st.slips+' slip'+(st.slips>1?'s':''):'');
+      dotClass='clean';
     } else {
-      mainNum=st.streak;mainSub=st.streak===st.total?'days clean':'day streak';
-      streakLabel=st.cleanDays+' / '+st.total+' days clean'+(st.slips>0?' · '+st.slips+' slip'+(st.slips>1?'s':''):'');
+      mainNum=st.confirmed;mainSub='/ '+st.total;
+      streakLabel=st.confirmed+' out of '+st.total+' days clean · '+st.slips+' slip'+(st.slips>1?'s':'');
+      dotClass='slipped';
     }
-    return`<div class="vice-card ${statusClass}">
+    return`<div class="vice-card" style="${cardBg}">
       <div style="text-align:center;min-width:52px">
-        <div class="vice-streak${slipped?' slipped':''}" style="font-size:${String(mainNum).length>3?'22px':'32px'}">${mainNum}</div>
+        <div class="vice-streak${s==='slipped'?' slipped':s==='unknown'?' style=color:var(--m)':''}" style="font-size:${String(mainNum).length>3?'22px':'32px'}">${mainNum}</div>
         <div style="font-size:10px;color:var(--m);margin-top:2px">${mainSub}</div>
       </div>
       <div class="vice-info" onclick="toggleVicePanel(${v.id})">
         <div class="vice-name">${v.emoji} ${esc(v.name)}</div>
         <div class="vice-sub">${streakLabel}</div>
       </div>
-      <div class="vice-dot ${slipped?'slipped':st.streak>0?'clean':'untouched'}"></div>
+      <div class="vice-dot ${dotClass}"></div>
     </div>
     <div class="slip-panel${isOpen?' op':''}">
-      ${slipped
-        ?`<div class="slip-confirm"><p>You logged a slip today.</p><button class="clean-btn" onclick="undoSlip(${v.id})">Undo — I didn't slip</button></div>`
-        :`<div class="slip-confirm"><p>Did you slip with <strong>${esc(v.name)}</strong> today?</p><button class="slip-btn" onclick="logSlip(${v.id})">Yes, I slipped</button><button class="clean-btn" onclick="toggleVicePanel(${v.id})">Cancel</button></div>`
+      ${s==='slipped'
+        ?`<div class="slip-confirm"><p>You slipped today.</p><button class="clean-btn" onclick="undoSlip(${v.id})">Undo — I didn't slip</button></div>`
+        :s==='clean'
+        ?`<div class="slip-confirm"><p>Marked clean today ✓</p><button class="slip-btn" onclick="logSlip(${v.id})">Actually I slipped</button><button class="clean-btn" onclick="toggleVicePanel(${v.id})">Close</button></div>`
+        :`<div class="slip-confirm"><p>How was today with <strong>${esc(v.name)}</strong>?</p><div style="display:flex;gap:8px"><button class="svb" style="background:var(--acc)" onclick="logClean(${v.id})">✓ Stayed clean</button><button class="slip-btn" onclick="logSlip(${v.id})">✗ I slipped</button></div></div>`
       }
     </div>`;
   }).join('');
@@ -1121,7 +1142,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.26';
+const APP_VERSION='2026.03.17.27';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
