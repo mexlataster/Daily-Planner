@@ -329,7 +329,7 @@ create table logs (
       <div class="ph"><h1 id="vices-greeting">Good morning</h1><p id="vices-subtitle">Track what you're avoiding.</p></div>
       <div id="vices-list" style="padding:0 20px"></div>
       <div id="vices-empty" style="display:none" class="es">
-        <div class="ebi">🧘</div>
+        <div class="ebi">🌱</div>
         <p>No vices tracked yet.<br>Go to Manage → Vices to add some.</p>
         <button onclick="nav('admin');setManageTab('vices')">Add vices</button>
       </div>
@@ -446,6 +446,7 @@ async function del(table,col,val){
 
 // ── State ─────────────────────────────────────────────────────────
 const EMOJIS=['🧘','🏊','🏋️','🛒','🍳','🚴','🧹','📚','🌿','☕','🎯','💊','🐕','✏️','🎸','🏃','🍎','🧴','🎾','⚽','🏀','🧗','🥗','💤','🫁'];
+const VICE_EMOJIS=['🚬','🍺','🍷','🍸','🎰','📱','🍕','🧁','🍫','💊','🃏','🎮','☕','🌿','💉','🍾','🥃','🎲','📺','🛒'];
 const TYPES=[
   {id:'counter',label:'Counter / doses',desc:'counts per day'},
   {id:'workout',label:'Workout log',desc:'sets · reps · weight'},
@@ -487,6 +488,10 @@ async function loadData(){
     vices=allHabits.filter(h=>h.type==='avoid');
     const rows=await sel('logs','order=date.desc&limit=90');
     logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
+    // Ensure today's log exists as empty if not present (so yesterday's data doesn't bleed in)
+    const todayK=new Date().toISOString().slice(0,10);
+    if(!logs[todayK])logs[todayK]={};
+    _lastDate=todayK;
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('app').style.display='block';
     renderHome();renderAdmin();renderViceAdmin();
@@ -1114,7 +1119,7 @@ function renderViceAdmin(){
       <div class="aiinf"><div class="ain">${esc(v.name)}</div><div class="ait">Avoid habit</div></div>
       <button class="delb" onclick="delVice(${v.id})">×</button>
     </div>`).join('')||`<div style="text-align:center;padding:24px;color:var(--m);font-size:14px">No vices yet — add one below.</div>`;
-  document.getElementById('vepick').innerHTML=EMOJIS.map(e=>`<button class="eb${e===selEmoji?' on':''}" onclick="pickE('${e}')">${e}</button>`).join('');
+  document.getElementById('vepick').innerHTML=VICE_EMOJIS.map(e=>`<button class="eb${e===selEmoji?' on':''}" onclick="pickE('${e}')">${e}</button>`).join('');
 }
 
 async function addVice(){
@@ -1161,7 +1166,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.2';
+const APP_VERSION='2026.03.18.3';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
