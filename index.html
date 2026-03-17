@@ -724,10 +724,10 @@ function openDayReport(dateKey){
   const allH=habits;
   const doneCount=allH.filter(h=>log['d'+h.id]).length;
   const activeCount=allH.filter(h=>log['d'+h.id]!==undefined||allH.some(x=>x.active)).length;
-  document.getElementById('report-subtitle').textContent=doneCount+' of '+allH.filter(h=>h.active).length+' habits completed';
+  const reportHabits=allH.filter(h=>h.active||log['tod'+h.id]);  document.getElementById('report-subtitle').textContent=doneCount+' of '+reportHabits.length+' habits completed';
 
   const body=document.getElementById('report-body');
-  const activeHabits=allH.filter(h=>h.active);
+  const activeHabits=allH.filter(h=>h.active||log['tod'+h.id]);
 
   if(!activeHabits.length){
     body.innerHTML=`<div class="report-empty"><div class="ei">📋</div><p>No habits set up yet.</p></div>`;
@@ -800,7 +800,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.15';
+const APP_VERSION='2026.03.17.16';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
