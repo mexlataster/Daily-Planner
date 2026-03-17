@@ -857,6 +857,8 @@ function navPeriod(dir){
 }
 function calcStreak(){let s=0;const t=new Date(),active=habits.filter(x=>x.active);if(!active.length)return 0;for(let i=0;i<365;i++){const d=new Date(t);d.setDate(d.getDate()-i);const log=logs[d.toISOString().slice(0,10)]||{};if(active.some(h=>log['d'+h.id]))s++;else if(i>0)break;}return s;}
 function renderStats(){
+  const scEl=document.getElementById('scards');
+  if(!scEl)return; // page not loaded yet
   const days=getDays(statPeriod),active=habits.filter(x=>x.active);
   let tp=0,td=0;const ph={};active.forEach(h=>{ph[h.id]={d:0,p:0};});
   days.forEach(day=>{const log=logs[day]||{};active.forEach(h=>{ph[h.id].p++;tp++;if(log['d'+h.id]){ph[h.id].d++;td++;}});});
@@ -1192,7 +1194,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.7';
+const APP_VERSION='2026.03.18.8';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
@@ -1204,7 +1206,7 @@ if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
 // Register service worker for PWA
 if('serviceWorker' in navigator){
   try{
-    navigator.serviceWorker.register('/sw.js').then(r=>{
+    navigator.serviceWorker.register('./sw.js').then(r=>{
       // ok
     }).catch(e=>{
       console.log('SW not available:', e.message);
