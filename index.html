@@ -1039,7 +1039,7 @@ function renderVices(){
     if(slippedToday>0)sub.textContent=slippedToday+' slip'+(slippedToday>1?'s':'')+' today. Keep pushing.';
     else if(confirmedToday===vices.length)sub.textContent='All clean today — great work! 💪';
     else if(confirmedToday>0)sub.textContent=confirmedToday+' of '+vices.length+' confirmed clean.';
-    else sub.textContent='Tap a vice to log today's status.';
+    else sub.textContent='Tap a vice to log today\'s status.';
   }
 
   el.innerHTML=vices.map(v=>{
@@ -1142,7 +1142,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.27';
+const APP_VERSION='2026.03.17.28';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
