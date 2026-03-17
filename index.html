@@ -336,17 +336,6 @@ create table logs (
     </div>
   </div>
 
-  <div class="page" id="pg-vices-old" style="display:none">
-    <div class="ph">
-      <h1>Vices</h1>
-      <p id="vices-subtitle">Track what you're avoiding.</p>
-    </div>
-    <div id="vices-list" style="padding:0 20px"></div>
-    <div id="vices-empty" style="display:none" class="es">
-      <div class="ebi">🧘</div>
-      <p>No vices tracked yet.<br>Add some in Manage → Vices.</p>
-      <button onclick="nav('admin');setManageTab('vices')">Add vices</button>
-    </div>
   </div>
 
   <div class="page" id="pg-admin">
@@ -878,7 +867,7 @@ function renderStats(){
     document.getElementById('gdiv').style.display='block';
     const cols=statPeriod==='week'?7:7;
     const isFuture=(d)=>new Date(d+'T12:00:00')>new Date();
-    const today=new Date().toISOString().slice(0,10);
+    const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
     const navLabel=getNavLabel();
     const isCurrentPeriod=(statPeriod==='week'&&viewWeekOffset===0)||(statPeriod==='month'&&viewMonth===new Date().getMonth()&&viewYear===new Date().getFullYear());
     // for month view, add empty cells for day-of-week offset
@@ -931,7 +920,10 @@ function openDayReport(dateKey){
     const skippedHabits=activeHabits.filter(h=>!log['d'+h.id]);
     const sortedHabits=[...doneHabits,...skippedHabits];
     const dividerIdx=doneHabits.length;
-    body.innerHTML=sortedHabits.map((h,idx)=>{
+    // Add vices section at the end
+  const viceSection=vices.length?`<div style="margin-top:20px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vices</div>${vices.map(v=>{const vs=calcViceStats(v);const vlog=logs[dateKey]||{};const slipped=!!vlog['slip'+v.id];const clean=!!vlog['clean'+v.id];const status=slipped?'<span style="color:#D85A30;font-size:12px;font-weight:500">✗ Slipped</span>':clean?'<span style="color:var(--acc);font-size:12px;font-weight:500">✓ Clean</span>':'<span style="color:var(--m);font-size:12px">Not logged</span>';return`<div class="report-habit" style="${slipped?'opacity:1':''}"><div class="report-habit-header"><span style="font-size:20px">${v.emoji}</span><div style="flex:1"><div class="report-habit-name">${esc(v.name)} ${status}</div><div style="font-size:12px;color:var(--m);margin-top:2px">Streak at this point: ${vs.streak} days</div></div></div></div>`;}).join('')}</div>`:'';
+
+  body.innerHTML=sortedHabits.map((h,idx)=>{
       const isFirst=idx===dividerIdx&&dividerIdx>0&&dividerIdx<sortedHabits.length;
       const divider=isFirst?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px">Not done today</div>`:'';
       const done=!!log['d'+h.id];
@@ -987,6 +979,7 @@ function openDayReport(dateKey){
     }).join('');
   }
 
+  body.innerHTML+=viceSection;
   document.getElementById('day-report').classList.add('open');
 }
 function closeDayReport(){
@@ -1195,7 +1188,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.5';
+const APP_VERSION='2026.03.18.6';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
