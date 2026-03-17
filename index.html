@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
@@ -538,6 +541,25 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // ── Boot ──────────────────────────────────────────────────────────
 loadCfg();
 if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData();}
+</script>
+<script>
+// ── Auto-update checker ───────────────────────────────────────────
+const APP_VERSION='2026.03.17.4';
+const STORED_VERSION=sessionStorage.getItem('app_version');
+if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
+  sessionStorage.setItem('app_version',APP_VERSION);
+  location.reload(true);
+}else{
+  sessionStorage.setItem('app_version',APP_VERSION);
+}
+
+// Register service worker for PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    location.reload();
+  });
+}
 </script>
 </body>
 </html>
