@@ -351,7 +351,7 @@ const TYPES=[
   {id:'cycling',label:'Cycling / cardio',desc:'dist · time · HR'},
   {id:'swimming',label:'Swimming',desc:'distance · time'},
   {id:'cooking',label:'Cooking',desc:'meal · notes'},
-  {id:'shopping',label:'Shopping',desc:'list · notes'},
+  {id:'shopping',label:'Shopping list',desc:'tap items to cross off'},
   {id:'notes',label:'General notes',desc:'free text'}
 ];
 const MOODS=['😴','😐','🙂','😀','🔥'];
@@ -446,7 +446,11 @@ async function saveDetail(id){
   }else if(h.type==='racket'){logs[k]['det'+id]={time:g('ptime'),score:g('pscore'),opponent:g('popp'),notes:g('pnotes')};
   }else if(h.type==='swimming'){logs[k]['det'+id]={dist:g('sd'),time:g('st')};
   }else if(h.type==='cooking'){logs[k]['det'+id]={meal:g('cm'),notes:g('cn')};
-  }else if(h.type==='shopping'){logs[k]['det'+id]={list:g('sl'),notes:g('sn')};
+  }else if(h.type==='shopping'){
+    // items are managed separately via addShopItem/toggleShopItem
+    // just save current state
+    const prev=logs[k]['det'+id]||{items:[]};
+    logs[k]['det'+id]=prev;
   }else{logs[k]['det'+id]={notes:g('gn')};}
   openPanels[id]=false;renderHome();setSyncing('syncing');
   try{await saveLog(k);setSyncing('');showToast('Saved!');}
@@ -484,6 +488,34 @@ async function addToday(id){
   try{await ups('logs',{date:k,data:logs[k]});setSyncing('');}catch(e){setSyncing('err');}
   renderHome();
 }
+async function addShopItem(id){
+  const inp=document.getElementById('shopinput'+id);
+  const text=inp?.value.trim();if(!text)return;
+  const k=todayKey();if(!logs[k])logs[k]={};
+  if(!logs[k]['det'+id])logs[k]['det'+id]={items:[]};
+  logs[k]['det'+id].items.push({text,done:false});
+  inp.value='';
+  renderHome();openPanels[id]=true;
+  saveLog(k).catch(()=>showToast('Sync failed'));
+}
+async function toggleShopItem(id,idx){
+  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  const items=logs[k]['det'+id].items||[];
+  if(!items[idx])return;
+  items[idx].done=!items[idx].done;
+  const allDone=items.length>0&&items.every(x=>x.done);
+  logs[k]['d'+id]=allDone;
+  renderHome();openPanels[id]=true;
+  saveLog(k).catch(()=>showToast('Sync failed'));
+}
+async function removeShopItem(id,idx){
+  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  logs[k]['det'+id].items.splice(idx,1);
+  const items=logs[k]['det'+id].items;
+  logs[k]['d'+id]=items.length>0&&items.every(x=>x.done);
+  renderHome();openPanels[id]=true;
+  saveLog(k).catch(()=>showToast('Sync failed'));
+}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function getMeta(h,log){
   const d=log['det'+h.id],def=TYPES.find(t=>t.id===h.type)?.desc||'';
@@ -496,7 +528,7 @@ function getMeta(h,log){
   if(h.type==='racket'){const p=[];if(d.time)p.push(d.time+'min');if(d.score)p.push(d.score);if(d.opponent)p.push('vs '+d.opponent.slice(0,15));return p.join(' · ')||def;}
   if(h.type==='swimming'){const p=[];if(d.dist)p.push(d.dist+'m');if(d.time)p.push(d.time+'min');return p.join(' · ')||def;}
   if(h.type==='cooking')return[d.meal,d.notes].filter(Boolean).join(' · ').slice(0,40)||def;
-  if(h.type==='shopping')return d.list?.slice(0,40)||def;
+  if(h.type==='shopping'){const items=d.items||[];const done=items.filter(x=>x.done).length;return items.length?done+'/'+items.length+' items'+(done===items.length?' ✓':''):def;}
   return d.notes?.slice(0,40)||def;
 }
 function buildPanel(h,log){
@@ -518,7 +550,12 @@ function buildPanel(h,log){
   if(h.type==='racket'){return`<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="e.g. 6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play with?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}" placeholder="How did it go?">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
   if(h.type==='swimming'){return`<div class="dst">Swim details</div><div class="fr"><label>Distance (m)</label><input type="number" id="sd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="st${id}" placeholder="0" value="${esc(d.time||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
   if(h.type==='cooking'){return`<div class="dst">Cooking log</div><div class="fr"><label>Meal</label><input type="text" id="cm${id}" placeholder="What did you make?" value="${esc(d.meal||'')}"/></div><div class="fr"><label>Notes</label><textarea id="cn${id}" placeholder="Recipe notes...">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  if(h.type==='shopping'){return`<div class="dst">Shopping</div><div class="fr"><label>List</label><textarea id="sl${id}" placeholder="Items to get...">${esc(d.list||'')}</textarea></div><div class="fr"><label>Notes</label><input type="text" id="sn${id}" placeholder="Store, budget..." value="${esc(d.notes||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
+  if(h.type==='shopping'){
+    const items=d.items||[];
+    const allDone=items.length>0&&items.every(x=>x.done);
+    const itemsHtml=items.map((item,i)=>`<div onclick="toggleShopItem(${id},${i})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:0.5px solid var(--b);cursor:pointer;user-select:none"><div style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${item.done?'var(--acc)':'var(--b2)'};background:${item.done?'var(--acc)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${item.done?'<svg viewBox="0 0 12 12" width="10" height="10"><path d="M2 6l2.5 2.5L10 3.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>':''}</div><span style="font-size:14px;flex:1;${item.done?'text-decoration:line-through;color:var(--m)':'color:var(--t)'}">${esc(item.text)}</span><button onclick="event.stopPropagation();removeShopItem(${id},${i})" style="border:none;background:transparent;color:var(--m);font-size:16px;cursor:pointer;padding:0 4px">×</button></div>`).join('');
+    return`<div class="dst">Shopping list${items.length?' ('+items.filter(x=>x.done).length+'/'+items.length+')':''}</div>${items.length?`<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);overflow:hidden;margin-bottom:10px">${itemsHtml}</div>`:''}<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="shopinput${id}" placeholder="Add item..." style="flex:1;padding:9px 11px;border:0.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t);outline:none" onkeydown="if(event.key==='Enter')addShopItem(${id})"/><button onclick="addShopItem(${id})" style="padding:9px 16px;background:var(--acc);color:white;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer">Add</button></div>`;
+  }
   return`<div class="dst">Notes</div><div class="fr"><textarea id="gn${id}" placeholder="Add a note for today...">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
 }
 
@@ -648,7 +685,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.17.12';
+const APP_VERSION='2026.03.17.13';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
