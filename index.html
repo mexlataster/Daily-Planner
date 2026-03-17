@@ -460,9 +460,12 @@ const TYPES=[
   {id:'notes',label:'General notes',desc:'free text'}
 ];
 const MOODS=['😴','😐','🙂','😀','🔥'];
-let habits=[], logs={}, vices=[], selEmoji=EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0, manageTab='habits', openVicePanels={};
+let habits=[], logs={}, vices=[], selEmoji=EMOJIS[0], selViceEmoji=VICE_EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0, manageTab='habits', openVicePanels={};
 
-function todayKey(){return new Date().toISOString().slice(0,10);}
+function todayKey(){
+  // Use Amsterdam timezone (Europe/Amsterdam)
+  return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
+}
 function setSyncing(s){const d=document.getElementById('sdot');if(!d)return;d.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' err':'');}
 
 // ── Connect ───────────────────────────────────────────────────────
@@ -489,7 +492,7 @@ async function loadData(){
     const rows=await sel('logs','order=date.desc&limit=90');
     logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
     // Ensure today's log exists as empty if not present (so yesterday's data doesn't bleed in)
-    const todayK=new Date().toISOString().slice(0,10);
+    const todayK=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
     if(!logs[todayK])logs[todayK]={};
     _lastDate=todayK;
     document.getElementById('loading').classList.add('hidden');
@@ -793,6 +796,7 @@ async function saveSortOrder(){
   catch(e){showToast('Sync failed');}
 }
 function pickE(e){selEmoji=e;renderAdmin();}
+function pickVE(e){selViceEmoji=e;renderViceAdmin();}
 function pickT(t){selType=t;renderAdmin();const w=document.getElementById('counter-target-wrap');if(w)w.style.display=t==='counter'?'block':'none';}
 async function toggleA(id){const h=habits.find(x=>x.id===id);if(!h)return;h.active=!h.active;renderAdmin();try{await ups('habits',{...h});}catch(e){showToast('Sync failed');}}
 async function delH(id){habits=habits.filter(x=>x.id!==id);renderAdmin();try{await del('habits','id',id);}catch(e){showToast('Sync failed');}}
@@ -986,7 +990,7 @@ function closeDayReport(){
 // ── Vice helpers ─────────────────────────────────────────────────
 function calcViceStats(v){
   const today=new Date();
-  const todayStr=today.toISOString().slice(0,10);
+  const todayStr=today.toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
   const startDate=v.created_at?new Date(v.created_at+'T12:00:00'):new Date(todayStr+'T12:00:00');
   let total=0,slips=0,confirmed=0,currentStreak=0,countingStreak=true;
   const d=new Date(today);
@@ -1119,13 +1123,13 @@ function renderViceAdmin(){
       <div class="aiinf"><div class="ain">${esc(v.name)}</div><div class="ait">Avoid habit</div></div>
       <button class="delb" onclick="delVice(${v.id})">×</button>
     </div>`).join('')||`<div style="text-align:center;padding:24px;color:var(--m);font-size:14px">No vices yet — add one below.</div>`;
-  document.getElementById('vepick').innerHTML=VICE_EMOJIS.map(e=>`<button class="eb${e===selEmoji?' on':''}" onclick="pickE('${e}')">${e}</button>`).join('');
+  document.getElementById('vepick').innerHTML=VICE_EMOJIS.map(e=>`<button class="eb${e===selViceEmoji?' on':''}" onclick="pickVE('${e}')">${e}</button>`).join('');
 }
 
 async function addVice(){
   const inp=document.getElementById('nvn'),name=inp.value.trim();
   if(!name){inp.focus();return;}
-  const v={id:Date.now(),name,emoji:selEmoji,sort_order:vices.length,active:true,type:'avoid',created_at:new Date().toISOString().slice(0,10)};
+  const v={id:Date.now(),name,emoji:selViceEmoji,sort_order:vices.length,active:true,type:'avoid',created_at:new Date().toISOString().slice(0,10)};
   vices.push(v);inp.value='';
   renderViceAdmin();
   try{await ups('habits',v);showToast('Vice added!');}catch(e){showToast('Sync failed');}
@@ -1144,9 +1148,9 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 // ── Boot ──────────────────────────────────────────────────────────
 loadCfg();
-let _lastDate=new Date().toISOString().slice(0,10);
+let _lastDate=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
 async function checkDateReset(){
-  const now=new Date().toISOString().slice(0,10);
+  const now=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
   if(now!==_lastDate){
     _lastDate=now;
     openPanels={};openVicePanels={};
@@ -1166,7 +1170,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.3';
+const APP_VERSION='2026.03.18.4';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
