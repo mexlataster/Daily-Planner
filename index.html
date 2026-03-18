@@ -367,6 +367,7 @@ create table logs (
         <button class="addb" onclick="addVice()">Add vice</button>
       </div>
     </div>
+  </div><!-- end pg-admin -->
 
   <!-- DAY REPORT OVERLAY -->
   <div class="day-report" id="day-report">
@@ -394,7 +395,6 @@ create table logs (
     <div class="bk" id="bk"></div>
     <div class="bdiv" id="gdiv" style="display:none"></div>
     <div id="gwrap"></div>
-  </div>
 </div>
 
 <script>
@@ -1206,7 +1206,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.10';
+const APP_VERSION='2026.03.18.11';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
