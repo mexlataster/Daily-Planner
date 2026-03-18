@@ -89,17 +89,24 @@ html,body{height:100%;font-family:'DM Sans',sans-serif}
 .svb{width:100%;padding:10px;background:var(--acc);color:#fff;border:none;border-radius:var(--r12);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-top:4px}
 .asb{width:100%;padding:8px;border:1px dashed var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--m);cursor:pointer;margin-bottom:8px}
 .wlist{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
-.exrow{display:flex;align-items:center;gap:8px;background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:10px 12px}
-.exname{font-size:14px;font-weight:500;color:var(--t);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.exmeta{font-size:12px;color:var(--m);white-space:nowrap}
-.exsets{font-size:13px;font-weight:500;color:var(--accd);min-width:48px;text-align:center}
-.exbtn{width:32px;height:32px;border-radius:50%;border:.5px solid var(--b2);background:transparent;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t);flex-shrink:0}
+.exrow{background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);overflow:hidden;margin-bottom:5px}
+.exrow-main{display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;user-select:none}
+.exrow-main:active{opacity:.7}
+.exname{font-size:14px;font-weight:500;color:var(--t);flex:1;min-width:0}
+.exmeta{font-size:12px;color:var(--m);margin-top:1px}
+.exbadge{background:var(--accl);color:var(--accd);font-size:12px;font-weight:500;padding:3px 9px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+.exbadge.zero{background:var(--bg);color:var(--m)}
+.exctr{display:none;padding:10px 13px;border-top:.5px solid var(--b);background:var(--bg)}
+.exctr.op{display:flex;align-items:center;gap:10px}
+.exbtn{width:36px;height:36px;border-radius:50%;border:.5px solid var(--b2);background:var(--card);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t);flex-shrink:0}
 .exbtn.plus{background:var(--acc);border-color:var(--acc);color:#fff}
-.exadd{background:var(--bg);border:.5px solid var(--b2);border-radius:var(--r12);padding:10px 12px;margin-bottom:8px}
-.exadd-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
-.exadd-row input{padding:7px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;width:100%}
-.exadd-row input:focus{border-color:var(--acc)}
-.exadd-num{width:60px;padding:7px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;-webkit-appearance:none}
+.exsets{font-family:'Fraunces',serif;font-size:24px;font-weight:600;color:var(--accd);flex:1;text-align:center}
+.exadd{background:var(--bg);border:.5px solid var(--b2);border-radius:var(--r12);padding:11px 13px;margin-top:4px}
+.exadd-name{width:100%;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;margin-bottom:7px}
+.exadd-name:focus{border-color:var(--acc)}
+.exadd-nums{display:flex;gap:7px;margin-bottom:7px}
+.exadd-num{flex:1;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;-webkit-appearance:none}
+.exadd-num:focus{border-color:var(--acc)}
 .ws{background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:10px 11px}
 .wsh{display:flex;gap:7px;margin-bottom:7px;align-items:center}
 .wsh input{flex:1;padding:6px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--t);outline:none}
@@ -304,7 +311,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.15';
+const APP_VERSION='2026.03.18.16';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -398,8 +405,11 @@ function buildPanel(h,log){
   if(h.type==='yoga'){const sessions=d.sessions||[];const pm=pendingMoods[id];const sh=sessions.map((s,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m)">↑${s.hr||'?'} ⌀${s.hre||'?'} bpm${s.dur?' · '+s.dur+' min':''}</div>`:''} ${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:3px">${esc(s.notes)}</div>`:''}</div>`).join('');return `${sessions.length?`<div class="dst">Today (${sessions.length})</div>${sh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:500">Add session</div><div class="fr"><label>Highest HR</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div class="fr"><label>Avg HR</label><input type="number" id="yhre${id}" placeholder="bpm"/></div><div class="fr"><label>Duration (min)</label><input type="number" id="ydur${id}" placeholder="30"/></div><div class="fr"><label>How did it feel?</label><textarea id="yn${id}" placeholder="Notes…"></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;}
   if(h.type==='workout'){
     const exlist=d.sets||[];
-    const exhtml=exlist.map((s,i)=>`<div class="exrow"><div style="min-width:0;flex:1"><div class="exname">${esc(s.name||'Exercise')}</div><div class="exmeta">${s.weight||0}kg · ${s.reps||0} reps</div></div><button class="exbtn" onclick="incrSet(${id},${i},-1)">−</button><div class="exsets">Set ${s.done||0}</div><button class="exbtn plus" onclick="incrSet(${id},${i},1)">+</button><button class="rb" style="flex-shrink:0" onclick="removeEx(${id},${i})">×</button></div>`).join('');
-    return `<div class="dst">Exercises</div><div class="wlist">${exhtml}</div><div class="exadd"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:8px">Add exercise</div><div class="exadd-row"><input type="text" id="exname${id}" placeholder="Exercise name"/><input type="number" class="exadd-num" id="exkg${id}" placeholder="kg" min="0" step=".5"/><input type="number" class="exadd-num" id="exreps${id}" placeholder="reps" min="1"/></div><button class="svb" style="margin-top:7px" onclick="addEx(${id})">Add exercise</button></div>`;
+    const exhtml=exlist.map((s,i)=>{
+      const done=s.done||0;
+      return `<div class="exrow"><div class="exrow-main" onclick="toggleExCtr(${id},${i})"><div style="flex:1;min-width:0"><div class="exname">${esc(s.name||'Exercise')}</div><div class="exmeta">${s.weight||0}kg · ${s.reps||0} reps per set</div></div><div class="exbadge${done===0?' zero':''}">${done===0?'0 sets':done+' set'+(done!==1?'s':'')}</div></div><div class="exctr" id="exctr-${id}-${i}"><button class="exbtn" onclick="incrSet(${id},${i},-1)">−</button><div class="exsets">${done}</div><button class="exbtn plus" onclick="incrSet(${id},${i},1)">+</button><button class="rb" style="margin-left:auto" onclick="removeEx(${id},${i})">×</button></div></div>`;
+    }).join('');
+    return `<div class="dst">Exercises — tap to log sets</div><div class="wlist">${exhtml}</div><div class="exadd"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:8px">Add exercise</div><input class="exadd-name" type="text" id="exname${id}" placeholder="Exercise name" onkeydown="if(event.key==='Enter')addEx(${id})"/><div class="exadd-nums"><input type="number" class="exadd-num" id="exkg${id}" placeholder="kg" min="0" step=".5"/><input type="number" class="exadd-num" id="exreps${id}" placeholder="reps per set" min="1"/></div><button class="svb" onclick="addEx(${id})">Add exercise</button></div>`;
   }
   if(h.type==='reading'){const entries=d.entries||[];const total=entries.reduce((s,e)=>s+(parseInt(e.pages)||0),0);const eh=entries.map((e,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">${esc(e.book)}</span><button class="rb" onclick="removeReadingEntry(${id},${i})">×</button></div><div style="font-size:13px;color:var(--m)">${e.pages} pages</div></div>`).join('');return `${entries.length?`<div class="dst">Today${total?' · '+total+' pages':''}</div>${eh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:500">Add book</div><div class="fr"><label>Book</label><input type="text" id="rb${id}" placeholder="Title"/></div><div class="fr"><label>Pages read</label><input type="number" id="rp${id}" placeholder="30"/></div></div><button class="svb" onclick="saveDetail(${id})">Save entry</button>`;}
   if(h.type==='racket')return `<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
@@ -449,6 +459,11 @@ function togglePanel(id){openPanels[id]=!openPanels[id];renderHome();}
 async function addToday(id){const k=todayKey();if(!logs[k])logs[k]={};logs[k]['tod'+id]=true;setSyncing('syncing');await saveLog(k).catch(()=>{});setSyncing('');renderHome();}
 async function removeToday(id){const k=todayKey();if(!logs[k])return;delete logs[k]['tod'+id];delete logs[k]['d'+id];delete logs[k]['det'+id];setSyncing('syncing');await saveLog(k).catch(()=>{});setSyncing('');renderHome();}
 
+function toggleExCtr(hid,idx){
+  const el=document.getElementById('exctr-'+hid+'-'+idx);
+  if(!el)return;
+  el.classList.toggle('op');
+}
 function addEx(id){
   const k=todayKey();if(!logs[k])logs[k]={};
   const h=habits.find(x=>x.id===id);if(!h)return;
