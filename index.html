@@ -88,7 +88,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif}
 .fr textarea{resize:vertical;min-height:56px}
 .svb{width:100%;padding:10px;background:var(--acc);color:#fff;border:none;border-radius:var(--r12);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-top:4px}
 .asb{width:100%;padding:8px;border:1px dashed var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--m);cursor:pointer;margin-bottom:8px}
-.wlist{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.wlist{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.exrow{display:flex;align-items:center;gap:8px;background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:10px 12px}
+.exname{font-size:14px;font-weight:500;color:var(--t);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exmeta{font-size:12px;color:var(--m);white-space:nowrap}
+.exsets{font-size:13px;font-weight:500;color:var(--accd);min-width:48px;text-align:center}
+.exbtn{width:32px;height:32px;border-radius:50%;border:.5px solid var(--b2);background:transparent;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t);flex-shrink:0}
+.exbtn.plus{background:var(--acc);border-color:var(--acc);color:#fff}
+.exadd{background:var(--bg);border:.5px solid var(--b2);border-radius:var(--r12);padding:10px 12px;margin-bottom:8px}
+.exadd-row{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
+.exadd-row input{padding:7px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;width:100%}
+.exadd-row input:focus{border-color:var(--acc)}
+.exadd-num{width:60px;padding:7px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;-webkit-appearance:none}
 .ws{background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:10px 11px}
 .wsh{display:flex;gap:7px;margin-bottom:7px;align-items:center}
 .wsh input{flex:1;padding:6px 9px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--t);outline:none}
@@ -293,7 +304,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.14';
+const APP_VERSION='2026.03.18.15';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -371,7 +382,7 @@ function getMeta(h,log){
   if(!d)return def;
   if(h.type==='counter'){const c=d.count||0,t2=h.target||1;return c+'/'+t2+(c>=t2?' ✓':'');}
   if(h.type==='yoga'){const s=d.sessions||[];if(s.length){const l=s[s.length-1];const p=[s.length+'x today'];if(l.hr||l.hre)p.push('↑'+(l.hr||'?')+' ⌀'+(l.hre||'?'));if(l.dur)p.push(l.dur+'min');return p.join(' · ');}return def;}
-  if(h.type==='workout'){if(d.sets?.length)return d.sets.map(s=>s.name).filter(Boolean).join(' · ')||def;return def;}
+  if(h.type==='workout'){if(d.sets?.length)return d.sets.map(s=>`${s.name||'?'} ${s.done||0}×`).join(' · ')||def;return def;}
   if(h.type==='reading'){const e=d.entries||[];if(e.length){const t2=e.reduce((s,x)=>s+(parseInt(x.pages)||0),0);return(e.length===1?e[0].book.slice(0,22):e.length+' books')+(t2?' · '+t2+' pages':'');}return def;}
   if(h.type==='cycling'){const p=[];if(d.dist)p.push(d.dist+'km');if(d.time)p.push(d.time+'min');if(d.hr)p.push('HR '+d.hr);return p.join(' · ')||def;}
   if(h.type==='racket'){const p=[];if(d.time)p.push(d.time+'min');if(d.score)p.push(d.score);if(d.opponent)p.push('vs '+d.opponent.slice(0,15));return p.join(' · ')||def;}
@@ -385,7 +396,11 @@ function buildPanel(h,log){
   const d=log['det'+h.id]||{},id=h.id;
   if(h.type==='counter'){const cur=d.count||0,tgt=h.target||1;return `<div class="dst">Daily counter</div><div class="ctr-row"><button class="ctr-btn" onclick="incrCounter(${id},-1)">−</button><div style="flex:1;text-align:center"><div class="ctr-val">${cur}</div><div style="font-size:11px;color:var(--m)">of ${tgt}</div></div><button class="ctr-btn plus" onclick="incrCounter(${id},1)">+</button></div>`;}
   if(h.type==='yoga'){const sessions=d.sessions||[];const pm=pendingMoods[id];const sh=sessions.map((s,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m)">↑${s.hr||'?'} ⌀${s.hre||'?'} bpm${s.dur?' · '+s.dur+' min':''}</div>`:''} ${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:3px">${esc(s.notes)}</div>`:''}</div>`).join('');return `${sessions.length?`<div class="dst">Today (${sessions.length})</div>${sh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:500">Add session</div><div class="fr"><label>Highest HR</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div class="fr"><label>Avg HR</label><input type="number" id="yhre${id}" placeholder="bpm"/></div><div class="fr"><label>Duration (min)</label><input type="number" id="ydur${id}" placeholder="30"/></div><div class="fr"><label>How did it feel?</label><textarea id="yn${id}" placeholder="Notes…"></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;}
-  if(h.type==='workout'){const sh=(d.sets||[]).map(s=>`<div class="ws wsi${id}"><div class="wsh"><input type="text" class="wsn" placeholder="Exercise" value="${esc(s.name||'')}"/><button class="rb" onclick="this.closest('.ws').remove()">×</button></div><div class="sf"><div class="sfl"><span>Sets</span><input type="number" class="wss" min="1" placeholder="3" value="${esc(s.sets||'')}"/></div><div class="sfl"><span>Reps</span><input type="number" class="wsr" min="1" placeholder="10" value="${esc(s.reps||'')}"/></div><div class="sfl"><span>kg</span><input type="number" class="wsw" min="0" step=".5" placeholder="0" value="${esc(s.weight||'')}"/></div></div></div>`).join('');return `<div class="dst">Workout</div><div class="wlist" id="wc${id}">${sh}</div><button class="asb" onclick="addWS(${id})">+ add exercise</button><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
+  if(h.type==='workout'){
+    const exlist=d.sets||[];
+    const exhtml=exlist.map((s,i)=>`<div class="exrow"><div style="min-width:0;flex:1"><div class="exname">${esc(s.name||'Exercise')}</div><div class="exmeta">${s.weight||0}kg · ${s.reps||0} reps</div></div><button class="exbtn" onclick="incrSet(${id},${i},-1)">−</button><div class="exsets">Set ${s.done||0}</div><button class="exbtn plus" onclick="incrSet(${id},${i},1)">+</button><button class="rb" style="flex-shrink:0" onclick="removeEx(${id},${i})">×</button></div>`).join('');
+    return `<div class="dst">Exercises</div><div class="wlist">${exhtml}</div><div class="exadd"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:8px">Add exercise</div><div class="exadd-row"><input type="text" id="exname${id}" placeholder="Exercise name"/><input type="number" class="exadd-num" id="exkg${id}" placeholder="kg" min="0" step=".5"/><input type="number" class="exadd-num" id="exreps${id}" placeholder="reps" min="1"/></div><button class="svb" style="margin-top:7px" onclick="addEx(${id})">Add exercise</button></div>`;
+  }
   if(h.type==='reading'){const entries=d.entries||[];const total=entries.reduce((s,e)=>s+(parseInt(e.pages)||0),0);const eh=entries.map((e,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">${esc(e.book)}</span><button class="rb" onclick="removeReadingEntry(${id},${i})">×</button></div><div style="font-size:13px;color:var(--m)">${e.pages} pages</div></div>`).join('');return `${entries.length?`<div class="dst">Today${total?' · '+total+' pages':''}</div>${eh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:500">Add book</div><div class="fr"><label>Book</label><input type="text" id="rb${id}" placeholder="Title"/></div><div class="fr"><label>Pages read</label><input type="number" id="rp${id}" placeholder="30"/></div></div><button class="svb" onclick="saveDetail(${id})">Save entry</button>`;}
   if(h.type==='racket')return `<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
   if(h.type==='cycling')return `<div class="dst">Ride</div><div class="fr"><label>Distance (km)</label><input type="number" id="cd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="ct${id}" placeholder="0" value="${esc(d.time||'')}"/></div><div class="fr"><label>Avg HR</label><input type="number" id="chr${id}" placeholder="0" value="${esc(d.hr||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
@@ -434,7 +449,39 @@ function togglePanel(id){openPanels[id]=!openPanels[id];renderHome();}
 async function addToday(id){const k=todayKey();if(!logs[k])logs[k]={};logs[k]['tod'+id]=true;setSyncing('syncing');await saveLog(k).catch(()=>{});setSyncing('');renderHome();}
 async function removeToday(id){const k=todayKey();if(!logs[k])return;delete logs[k]['tod'+id];delete logs[k]['d'+id];delete logs[k]['det'+id];setSyncing('syncing');await saveLog(k).catch(()=>{});setSyncing('');renderHome();}
 
-function addWS(id){const c=document.getElementById('wc'+id);const d=document.createElement('div');d.className='ws wsi'+id;d.innerHTML=`<div class="wsh"><input type="text" class="wsn" placeholder="Exercise"/><button class="rb" onclick="this.closest('.ws').remove()">×</button></div><div class="sf"><div class="sfl"><span>Sets</span><input type="number" class="wss" min="1" placeholder="3"/></div><div class="sfl"><span>Reps</span><input type="number" class="wsr" min="1" placeholder="10"/></div><div class="sfl"><span>kg</span><input type="number" class="wsw" min="0" step=".5" placeholder="0"/></div></div>`;c.appendChild(d);}
+function addEx(id){
+  const k=todayKey();if(!logs[k])logs[k]={};
+  const h=habits.find(x=>x.id===id);if(!h)return;
+  const name=document.getElementById('exname'+id)?.value.trim();
+  const kg=document.getElementById('exkg'+id)?.value||'0';
+  const reps=document.getElementById('exreps'+id)?.value||'0';
+  if(!name)return;
+  if(!logs[k]['det'+id])logs[k]['det'+id]={sets:[]};
+  if(!Array.isArray(logs[k]['det'+id].sets))logs[k]['det'+id].sets=[];
+  logs[k]['det'+id].sets.push({name,weight:kg,reps,done:0});
+  logs[k]['d'+id]=true;
+  openPanels[id]=true;
+  renderHome();
+  saveLog(k).then(()=>showToast('Exercise added!')).catch(()=>showToast('Sync failed'));
+}
+function incrSet(id,idx,delta){
+  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  const sets=logs[k]['det'+id].sets||[];
+  if(!sets[idx])return;
+  sets[idx].done=Math.max(0,(sets[idx].done||0)+delta);
+  logs[k]['d'+id]=sets.length>0;
+  openPanels[id]=true;
+  renderHome();
+  saveLog(k).then(()=>setSyncing('')).catch(()=>setSyncing('err'));
+}
+function removeEx(id,idx){
+  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  logs[k]['det'+id].sets.splice(idx,1);
+  logs[k]['d'+id]=logs[k]['det'+id].sets.length>0;
+  openPanels[id]=true;
+  renderHome();
+  saveLog(k).catch(()=>showToast('Sync failed'));
+}
 
 async function saveDetail(id){
   const k=todayKey();if(!logs[k])logs[k]={};
@@ -457,7 +504,7 @@ async function saveDetail(id){
     if(logs[k]['det'+id].entries.length)logs[k]['d'+id]=true;
     openPanels[id]=false;renderHome();setSyncing('syncing');saveLog(k).then(()=>{setSyncing('');showToast('Saved!');}).catch(()=>{setSyncing('err');showToast('Sync failed');});return;
   }
-  if(h.type==='workout'){const sets=[];document.querySelectorAll('.wsi'+id).forEach(el=>{const name=el.querySelector('.wsn').value.trim();if(name)sets.push({name,sets:el.querySelector('.wss').value,reps:el.querySelector('.wsr').value,weight:el.querySelector('.wsw').value});});logs[k]['det'+id]={sets};}
+  if(h.type==='workout'){openPanels[id]=true;renderHome();return;}
   else if(h.type==='racket')logs[k]['det'+id]={time:g('ptime'),score:g('pscore'),opponent:g('popp'),notes:g('pnotes')};
   else if(h.type==='cycling')logs[k]['det'+id]={dist:g('cd'),time:g('ct'),hr:g('chr')};
   else if(h.type==='swimming')logs[k]['det'+id]={dist:g('sd'),time:g('st')};
@@ -637,7 +684,7 @@ function openDayReport(dateKey){
     if(det){
       if(h.type==='yoga'){const s=det.sessions||[];if(s.length){det2=s.map((ss,si)=>`<div class="rpt-sess"><div class="rpt-sess-t">Session ${si+1}${ss.time?' · '+ss.time:''}</div>${(ss.hr||ss.hre)?`<div class="rpt-field"><span class="rpt-fl">Heart rate</span><span class="rpt-fv">↑${ss.hr||'?'} ⌀${ss.hre||'?'} bpm${ss.dur?' · '+ss.dur+' min':''}</span></div>`:''}${ss.notes?`<div class="rpt-field"><span class="rpt-fl">Notes</span><span class="rpt-fv">${esc(ss.notes)}</span></div>`:''}</div>`).join('');}}
       else if(h.type==='counter')det2=`<div class="rpt-field"><span class="rpt-fl">Count</span><span class="rpt-fv">${det.count||0} / ${h.target||1}</span></div>`;
-      else if(h.type==='workout'){const s=det.sets||[];if(s.length)det2=s.map(ss=>`<div class="rpt-field"><span class="rpt-fl">${esc(ss.name)}</span><span class="rpt-fv">${[ss.sets&&ss.sets+'×',ss.reps&&ss.reps+' reps',ss.weight&&ss.weight+'kg'].filter(Boolean).join(' · ')||'logged'}</span></div>`).join('');}
+      else if(h.type==='workout'){const s=det.sets||[];if(s.length)det2=s.map(ss=>`<div class="rpt-field"><span class="rpt-fl">${esc(ss.name)}</span><span class="rpt-fv">${ss.done||0} sets · ${ss.reps||0} reps · ${ss.weight||0}kg</span></div>`).join('');}
       else if(h.type==='reading'){const e=det.entries||[];if(e.length){const tot=e.reduce((s,x)=>s+(parseInt(x.pages)||0),0);det2=e.map(ee=>`<div class="rpt-field"><span class="rpt-fl">${esc(ee.book)}</span><span class="rpt-fv">${ee.pages} pages</span></div>`).join('');if(e.length>1)det2+=`<div class="rpt-field"><span class="rpt-fl" style="font-weight:500">Total</span><span class="rpt-fv" style="font-weight:500">${tot} pages</span></div>`;}}
       else if(h.type==='racket')det2=[det.time&&`<div class="rpt-field"><span class="rpt-fl">Duration</span><span class="rpt-fv">${det.time} min</span></div>`,det.score&&`<div class="rpt-field"><span class="rpt-fl">Score</span><span class="rpt-fv">${esc(det.score)}</span></div>`,det.opponent&&`<div class="rpt-field"><span class="rpt-fl">Opponent</span><span class="rpt-fv">${esc(det.opponent)}</span></div>`,det.notes&&`<div class="rpt-field"><span class="rpt-fl">Notes</span><span class="rpt-fv">${esc(det.notes)}</span></div>`].filter(Boolean).join('');
       else if(h.type==='cycling')det2=[det.dist&&`<div class="rpt-field"><span class="rpt-fl">Distance</span><span class="rpt-fv">${det.dist} km</span></div>`,det.time&&`<div class="rpt-field"><span class="rpt-fl">Time</span><span class="rpt-fv">${det.time} min</span></div>`,det.hr&&`<div class="rpt-field"><span class="rpt-fl">Avg HR</span><span class="rpt-fv">${det.hr} bpm</span></div>`].filter(Boolean).join('');
