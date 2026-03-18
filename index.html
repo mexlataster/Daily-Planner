@@ -297,8 +297,16 @@ grant all on logs to anon;</code></div></div>
     </div>
   </div>
   <div class="day-report" id="day-report">
-    <div class="rpt-hdr"><button class="rpt-back" onclick="closeDayReport()"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M13 4L7 10L13 16"/></svg></button><div><div class="rpt-title" id="rpt-title"></div><div class="rpt-sub" id="rpt-sub"></div></div></div>
+    <div class="rpt-hdr"><button class="rpt-back" onclick="closeDayReport()"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M13 4L7 10L13 16"/></svg></button><div style="flex:1"><div class="rpt-title" id="rpt-title"></div><div class="rpt-sub" id="rpt-sub"></div></div><button id="rpt-edit-btn" onclick="openEditDay()" style="padding:7px 14px;border:.5px solid var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--t);cursor:pointer">Edit</button></div>
     <div class="rpt-body" id="rpt-body"></div>
+  </div>
+  <div class="day-report" id="edit-day" style="z-index:160">
+    <div class="rpt-hdr">
+      <button class="rpt-back" onclick="closeEditDay()"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M13 4L7 10L13 16"/></svg></button>
+      <div style="flex:1"><div class="rpt-title" id="edit-title"></div><div class="rpt-sub" id="edit-sub">Editing this day</div></div>
+      <button onclick="saveEditDay()" style="padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer">Done</button>
+    </div>
+    <div id="edit-body" style="padding:16px 20px"></div>
   </div>
   <div class="page" id="pg-stats">
     <div class="ph"><h1>Results</h1><p>Track your progress.</p></div>
@@ -311,7 +319,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.17';
+const APP_VERSION='2026.03.18.18';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -342,6 +350,7 @@ let habits=[],logs={},vices=[],selEmoji=EMOJIS[0],selViceEmoji=VICE_EMOJIS[0],se
 let statPeriod='day',openPanels={},viewMonth=new Date().getMonth(),viewYear=new Date().getFullYear(),viewWeekOffset=0;
 let manageTab='habits',todayTab='habits',openVicePanels={};
 let _lastDate='';
+let editDateKey=null,editPanels={};
 const pendingMoods={};
 let dragSrcId=null;
 
@@ -680,7 +689,7 @@ function renderStats(){
   }else{document.getElementById('gdiv').style.display='none';document.getElementById('gwrap').innerHTML='';}
 }
 
-function openDayReport(dateKey){
+function openDayReport(dateKey){editDateKey=dateKey;
   const log=logs[dateKey]||{};
   const date=new Date(dateKey+'T12:00:00');
   document.getElementById('rpt-title').textContent=date.toLocaleDateString('en-NL',{weekday:'long',day:'numeric',month:'long'});
@@ -709,10 +718,90 @@ function openDayReport(dateKey){
     return `${divider}<div class="rpt-habit" style="${isDone?'':'opacity:.45'}"><div class="rpt-hh"><span style="font-size:20px">${h.emoji}</span><div style="flex:1"><div class="rpt-hn">${esc(h.name)}${badge}</div></div></div>${det2?`<div class="rpt-det">${det2}</div>`:''}</div>`;
   }).join('');
   if(vices.length){const vhtml=vices.map(v=>{const vl=logs[dateKey]||{};const sl=!!vl['slip'+v.id],cl=!!vl['clean'+v.id];const vstatus=sl?'<span style="color:#D85A30;font-size:12px;font-weight:500">✗ Slipped</span>':cl?'<span style="color:var(--acc);font-size:12px;font-weight:500">✓ Clean</span>':'<span style="color:var(--m);font-size:12px">Not logged</span>';const vs=calcViceStats(v);return `<div class="rpt-habit"><div class="rpt-hh"><span style="font-size:20px">${v.emoji}</span><div style="flex:1"><div class="rpt-hn">${esc(v.name)} ${vstatus}</div><div style="font-size:12px;color:var(--m);margin-top:2px">Streak: ${vs.streak} day${vs.streak!==1?'s':''}</div></div></div></div>`;}).join('');html+=`<div style="margin-top:16px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Vices</div>${vhtml}</div>`;}
+  const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
+  const editBtn=document.getElementById('rpt-edit-btn');
+  if(editBtn)editBtn.style.display=dateKey===todayStr?'none':'block';
   document.getElementById('rpt-body').innerHTML=html;
   document.getElementById('day-report').classList.add('open');
 }
 function closeDayReport(){document.getElementById('day-report').classList.remove('open');}
+
+function openEditDay(){
+  if(!editDateKey)return;
+  // Don't allow editing today - use today page for that
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
+  if(editDateKey===today){showToast('Use Today page to edit today!');return;}
+  const date=new Date(editDateKey+'T12:00:00');
+  document.getElementById('edit-title').textContent=date.toLocaleDateString('en-NL',{weekday:'long',day:'numeric',month:'long'});
+  editPanels={};
+  renderEditDay();
+  document.getElementById('edit-day').classList.add('open');
+}
+
+function closeEditDay(){
+  document.getElementById('edit-day').classList.remove('open');
+  // Refresh day report after edit
+  openDayReport(editDateKey);
+}
+
+async function saveEditDay(){
+  setSyncing('syncing');
+  try{await saveLog(editDateKey);setSyncing('');showToast('Saved!');}
+  catch(e){setSyncing('err');showToast('Sync failed');}
+  closeEditDay();
+}
+
+function renderEditDay(){
+  if(!editDateKey)return;
+  if(!logs[editDateKey])logs[editDateKey]={};
+  const log=logs[editDateKey];
+  const active=habits.filter(x=>x.active);
+  const body=document.getElementById('edit-body');
+  if(!active.length){body.innerHTML='<div class="es"><div class="ei">🌱</div><p>No habits for this day.</p></div>';return;}
+  document.getElementById('edit-sub').textContent=active.filter(h=>log['d'+h.id]).length+' of '+active.length+' done';
+  body.innerHTML=active.map(habit=>{
+    const isDone=!!log['d'+habit.id];
+    const isOpen=!!editPanels[habit.id];
+    return `<div class="hi${isDone?' done':''}" style="margin-bottom:9px"><div class="hrow"><div class="hchk" onclick="editToggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="editToggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div><button class="dbt${isOpen?' op':''}" onclick="editTogglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildEditPanel(habit,log)}</div></div>`;
+  }).join('');
+}
+
+function editToggleDone(id){
+  if(!logs[editDateKey])logs[editDateKey]={};
+  logs[editDateKey]['d'+id]=!logs[editDateKey]['d'+id];
+  renderEditDay();
+}
+
+function editTogglePanel(id){editPanels[id]=!editPanels[id];renderEditDay();}
+
+// buildEditPanel - same as buildPanel but uses editDateKey context
+function buildEditPanel(h,log){
+  const d=log['det'+h.id]||{},id=h.id;
+  // For edit mode, reuse buildPanel but we need saves to go to editDateKey
+  // Simple approach: same panel HTML but save buttons call editSaveDetail
+  if(h.type==='counter'){const cur=d.count||0,tgt=h.target||1;return `<div class="dst">Daily counter</div><div class="ctr-row"><button class="ctr-btn" onclick="editIncrCounter(${id},-1)">−</button><div style="flex:1;text-align:center"><div class="ctr-val">${cur}</div><div style="font-size:11px;color:var(--m)">of ${tgt}</div></div><button class="ctr-btn plus" onclick="editIncrCounter(${id},1)">+</button></div>`;}
+  if(h.type==='yoga'){const sessions=d.sessions||[];const sh=sessions.map((s,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="editRemoveSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m)">↑${s.hr||'?'} ⌀${s.hre||'?'} bpm${s.dur?' · '+s.dur+' min':''}</div>`:''} ${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:3px">${esc(s.notes)}</div>`:''}</div>`).join('');return `${sessions.length?`<div class="dst">Sessions (${sessions.length})</div>${sh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:500">Add session</div><div class="fr"><label>Highest HR</label><input type="number" id="eyhr${id}" placeholder="bpm"/></div><div class="fr"><label>Avg HR</label><input type="number" id="eyhre${id}" placeholder="bpm"/></div><div class="fr"><label>Duration (min)</label><input type="number" id="eydur${id}" placeholder="30"/></div><div class="fr"><label>Notes</label><textarea id="eyn${id}" placeholder="Notes…"></textarea></div></div><button class="svb" onclick="editSaveYoga(${id})">Save session</button>`;}
+  if(h.type==='reading'){const entries=d.entries||[];const total=entries.reduce((s,e)=>s+(parseInt(e.pages)||0),0);const eh=entries.map((e,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">${esc(e.book)}</span><button class="rb" onclick="editRemoveReading(${id},${i})">×</button></div><div style="font-size:13px;color:var(--m)">${e.pages} pages</div></div>`).join('');return `${entries.length?`<div class="dst">Books${total?' · '+total+' pages':''}</div>${eh}`:''}<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div class="fr"><label>Book</label><input type="text" id="erb${id}" placeholder="Title"/></div><div class="fr"><label>Pages</label><input type="number" id="erp${id}" placeholder="30"/></div></div><button class="svb" onclick="editSaveReading(${id})">Save entry</button>`;}
+  if(h.type==='workout'){const exlist=d.sets||[];const exhtml=exlist.map((s,i)=>`<div class="exrow"><div class="exrow-main" onclick="toggleEditExCtr(${id},${i})"><div style="flex:1;min-width:0"><div class="exname">${esc(s.name||'Exercise')}</div><div class="exmeta">${s.weight||0}kg · ${s.reps||0} reps per set</div></div><div class="exbadge${(s.done||0)===0?' zero':''}">${(s.done||0)===0?'0 sets':(s.done||0)+' set'+((s.done||0)!==1?'s':'')}</div></div><div class="exctr" id="eetr-${id}-${i}"><button class="exbtn" onclick="editIncrSet(${id},${i},-1)">−</button><div class="exsets">${s.done||0}</div><button class="exbtn plus" onclick="editIncrSet(${id},${i},1)">+</button><button class="rb" style="margin-left:auto" onclick="editRemoveEx(${id},${i})">×</button></div></div>`).join('');return `<div class="dst">Exercises — tap to log</div><div class="wlist">${exhtml}</div><div class="exadd"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:8px">Add exercise</div><input class="exadd-name" type="text" id="eexname${id}" placeholder="Exercise name"/><div class="exadd-nums"><input type="number" class="exadd-num" id="eexkg${id}" placeholder="kg" min="0" step=".5"/><input type="number" class="exadd-num" id="eexreps${id}" placeholder="reps" min="1"/></div><button class="svb" style="margin-top:7px" onclick="editAddEx(${id})">Add exercise</button></div>`;}
+  if(h.type==='racket')return `<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration</label><input type="number" id="eptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="epscore${id}" placeholder="6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent</label><input type="text" id="epopp${id}" placeholder="Who?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="epnotes${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="editSaveSimple(${id},'racket')">Save</button>`;
+  if(h.type==='cycling')return `<div class="dst">Ride</div><div class="fr"><label>Distance (km)</label><input type="number" id="ecd${id}" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="ect${id}" value="${esc(d.time||'')}"/></div><div class="fr"><label>Avg HR</label><input type="number" id="echr${id}" value="${esc(d.hr||'')}"/></div><button class="svb" onclick="editSaveSimple(${id},'cycling')">Save</button>`;
+  if(h.type==='swimming')return `<div class="dst">Swim</div><div class="fr"><label>Distance (m)</label><input type="number" id="esd${id}" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="est${id}" value="${esc(d.time||'')}"/></div><button class="svb" onclick="editSaveSimple(${id},'swimming')">Save</button>`;
+  if(h.type==='cooking')return `<div class="dst">Cooking</div><div class="fr"><label>Meal</label><input type="text" id="ecm${id}" value="${esc(d.meal||'')}"/></div><div class="fr"><label>Notes</label><textarea id="ecn${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="editSaveSimple(${id},'cooking')">Save</button>`;
+  return `<div class="dst">Notes</div><div class="fr"><textarea id="egn${id}" placeholder="Add a note…">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="editSaveSimple(${id},'notes')">Save</button>`;
+}
+
+// Edit helper functions
+function eg(n,id){return document.getElementById(n+id)?.value||'';}
+function editIncrCounter(id,delta){const log=logs[editDateKey];if(!log['det'+id])log['det'+id]={count:0};const h=habits.find(x=>x.id===id);const tgt=h?.target||1;log['det'+id].count=Math.max(0,Math.min(tgt,(Number(log['det'+id].count)||0)+delta));log['d'+id]=log['det'+id].count>=tgt;renderEditDay();}
+function editRemoveSession(id,idx){const log=logs[editDateKey];if(!log['det'+id])return;log['det'+id].sessions.splice(idx,1);log['d'+id]=log['det'+id].sessions.length>0;editPanels[id]=true;renderEditDay();}
+function editSaveYoga(id){const log=logs[editDateKey];if(!log['det'+id])log['det'+id]={sessions:[]};const sessions=log['det'+id].sessions||[];const hr=eg('eyhr',id),hre=eg('eyhre',id),dur=eg('eydur',id),notes=eg('eyn',id);if(hr||hre||dur||notes)sessions.push({hr,hre,dur,notes,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});log['det'+id]={sessions};if(sessions.length)log['d'+id]=true;editPanels[id]=true;renderEditDay();}
+function editRemoveReading(id,idx){const log=logs[editDateKey];if(!log['det'+id])return;log['det'+id].entries.splice(idx,1);log['d'+id]=log['det'+id].entries.length>0;editPanels[id]=true;renderEditDay();}
+function editSaveReading(id){const log=logs[editDateKey];if(!log['det'+id]||!log['det'+id].entries)log['det'+id]={entries:[]};const book=eg('erb',id),pages=eg('erp',id);if(book||pages){log['det'+id].entries.push({book:book||'Unknown',pages:pages||'0'});}if(log['det'+id].entries.length)log['d'+id]=true;editPanels[id]=true;renderEditDay();}
+function editSaveSimple(id,type){const log=logs[editDateKey];const g=n=>eg(n,id);if(type==='racket')log['det'+id]={time:g('eptime'),score:g('epscore'),opponent:g('epopp'),notes:g('epnotes')};else if(type==='cycling')log['det'+id]={dist:g('ecd'),time:g('ect'),hr:g('echr')};else if(type==='swimming')log['det'+id]={dist:g('esd'),time:g('est')};else if(type==='cooking')log['det'+id]={meal:g('ecm'),notes:g('ecn')};else log['det'+id]={notes:g('egn')};editPanels[id]=false;renderEditDay();showToast('Saved!');}
+function toggleEditExCtr(hid,idx){const el=document.getElementById('eetr-'+hid+'-'+idx);if(el)el.classList.toggle('op');}
+function editIncrSet(id,idx,delta){const log=logs[editDateKey];if(!log['det'+id])return;const sets=log['det'+id].sets||[];if(!sets[idx])return;sets[idx].done=Math.max(0,(sets[idx].done||0)+delta);log['d'+id]=sets.length>0;renderEditDay();editPanels[id]=true;}
+function editRemoveEx(id,idx){const log=logs[editDateKey];if(!log['det'+id])return;log['det'+id].sets.splice(idx,1);log['d'+id]=log['det'+id].sets.length>0;editPanels[id]=true;renderEditDay();}
+function editAddEx(id){const log=logs[editDateKey];if(!log['det'+id])log['det'+id]={sets:[]};const name=document.getElementById('eexname'+id)?.value.trim();const kg=document.getElementById('eexkg'+id)?.value||'0';const reps=document.getElementById('eexreps'+id)?.value||'0';if(!name)return;log['det'+id].sets.push({name,weight:kg,reps,done:0});log['d'+id]=true;editPanels[id]=true;renderEditDay();}
 
 function nav(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
