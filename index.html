@@ -104,8 +104,8 @@ html,body{height:100%;font-family:'DM Sans',sans-serif}
 .exadd{background:var(--bg);border:.5px solid var(--b2);border-radius:var(--r12);padding:11px 13px;margin-top:4px}
 .exadd-name{width:100%;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;margin-bottom:7px}
 .exadd-name:focus{border-color:var(--acc)}
-.exadd-nums{display:flex;gap:7px;margin-bottom:7px}
-.exadd-num{flex:1;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;-webkit-appearance:none}
+.exadd-nums{display:flex;gap:7px;margin-bottom:7px;width:100%}
+.exadd-num{flex:1;min-width:0;width:0;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none;-webkit-appearance:none}
 .exadd-num:focus{border-color:var(--acc)}
 .ws{background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);padding:10px 11px}
 .wsh{display:flex;gap:7px;margin-bottom:7px;align-items:center}
@@ -311,7 +311,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.16';
+const APP_VERSION='2026.03.18.17';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
