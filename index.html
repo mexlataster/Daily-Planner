@@ -5,6 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
+<meta name="version" content="2026.03.18.12"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -397,7 +398,164 @@ create table logs (
     <div id="gwrap"></div>
 </div>
 
+</script>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup">
+  <div class="setup-card">
+    <h2>Connect your database</h2>
+    <p class="sub">Your data will be saved in the cloud — survives clearing history, switching phones, everything. One-time setup, takes about 3 minutes.</p>
+
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-t">Go to <a href="https://supabase.com" target="_blank">supabase.com</a> → Sign up free → click <strong>New project</strong>. Pick any name, set a password, choose a region close to you (e.g. EU West).</div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-t">Once the project loads, open the <strong>SQL Editor</strong> (left sidebar) and paste + run this:<code class="sql-block">create table habits (
+  id bigint primary key,
+  name text,
+  emoji text,
+  type text,
+  active boolean,
+  sort_order int default 0
+);
+create table logs (
+  date text primary key,
+  data jsonb
+);</code></div>
+    </div>
+
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-t">Go to <strong>Project Settings → API</strong> (bottom of left sidebar). Copy your <strong>Project URL</strong> and <strong>anon / public key</strong> and paste them below.</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <input class="setup-input" id="cfg-url" placeholder="Project URL  (https://xxxxxxxxxxxx.supabase.co)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+    <input class="setup-input" id="cfg-key" placeholder="anon / public API key  (eyJ…)" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"/>
+    <div class="setup-err" id="setup-err"></div>
+    <button class="setup-btn" onclick="connectDB()">Connect &amp; start tracking →</button>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading" class="hidden">
+  <div class="spinner"></div>
+  <p id="loading-msg">Loading your data…</p>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none">
+  <nav class="nav">
+    <button class="nb on" onclick="nav('home')" id="nb-home">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Today
+    </button>
+    <button class="nb" onclick="nav('admin')" id="nb-admin">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Manage
+    </button>
+    <button class="nb" onclick="nav('stats')" id="nb-stats">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results
+    </button>
+  </nav>
+
+  <div class="page active" id="pg-home">
+    <div class="ph" style="padding-bottom:0">
+      <h1><span id="greet">Good morning</span><span class="sync-dot" id="sdot"></span></h1>
+      <p id="tdate"></p>
+    </div>
+    <div class="manage-toggle" style="margin:14px 20px 0">
+      <button class="mt-btn on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button>
+      <button class="mt-btn" id="tt-vices" onclick="setTodayTab('vices')">Vices</button>
+    </div>
+    <div id="today-habits-section">
+    <div style="height:14px"></div>
+    <div class="pbar" id="pbwrap" style="display:none">
+      <div class="pbrow"><span id="ptxt"></span><span id="ppct"></span></div>
+      <div class="pbbg"><div class="pbfill" id="pfill" style="width:0%"></div></div>
+    </div>
+    <div class="hlist" id="hlist"></div>
+    </div><!-- end today-habits-section -->
+    <div id="today-vices-section" style="display:none">
+      <div class="ph"><h1 id="vices-greeting">Good morning</h1><p id="vices-subtitle">Track what you're avoiding.</p></div>
+      <div id="vices-list" style="padding:0 20px"></div>
+      <div id="vices-empty" style="display:none" class="es">
+        <div class="ebi">🌱</div>
+        <p>No vices tracked yet.<br>Go to Manage → Vices to add some.</p>
+        <button onclick="nav('admin');setManageTab('vices')">Add vices</button>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <div class="page" id="pg-admin">
+    <div class="ph"><h1>Manage</h1><p>Toggle habits and manage your vices.</p></div>
+    <div class="manage-toggle">
+      <button class="mt-btn on" id="mt-habits" onclick="setManageTab('habits')">Habits</button>
+      <button class="mt-btn" id="mt-vices" onclick="setManageTab('vices')">Vices</button>
+    </div>
+    <div id="manage-habits-section">
+      <p class="anote" id="anote"></p>
+      <div class="alist" id="alist"></div>
+      <div class="af">
+        <div class="aft">Add new habit</div>
+        <div class="epick" id="epick"></div>
+        <div class="afrow"><input type="text" id="nhn" placeholder="e.g. Yoga, Swimming..." maxlength="32"/></div>
+        <div style="font-size:11px;color:var(--m);margin-bottom:7px;text-transform:uppercase;letter-spacing:.06em;font-weight:500">Tracking type</div>
+        <div class="tgrid" id="tgrid"></div>
+        <div id="counter-target-wrap" style="display:none;margin-bottom:9px"><div style="font-size:11px;color:var(--m);margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;font-weight:500">Daily target (how many per day?)</div><input type="number" id="new-target" min="1" max="99" value="1" style="width:80px;padding:8px 10px;border:0.5px solid var(--b2);border-radius:var(--r8);background:var(--bg);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t);outline:none"/></div>
+        <button class="addb" onclick="addH()">Add habit</button>
+      </div>
+    </div>
+    <div id="manage-vices-section" style="display:none">
+      <p class="anote" id="vices-manage-note"></p>
+      <div class="alist" id="vices-alist"></div>
+      <div class="af">
+        <div class="aft">Add new vice</div>
+        <div class="epick" id="vepick"></div>
+        <div class="afrow"><input type="text" id="nvn" placeholder="e.g. Weed, Alcohol, Smoking..." maxlength="32"/></div>
+        <button class="addb" onclick="addVice()">Add vice</button>
+      </div>
+    </div>
+  </div><!-- end pg-admin -->
+
+  <!-- DAY REPORT OVERLAY -->
+  <div class="day-report" id="day-report">
+    <div class="report-header">
+      <button class="report-back" onclick="closeDayReport()">
+        <svg viewBox="0 0 20 20" width="18" height="18"><path d="M13 4L7 10L13 16"/></svg>
+      </button>
+      <div>
+        <div class="report-title" id="report-title">Tuesday, 17 March</div>
+        <div class="report-subtitle" id="report-subtitle">Daily report</div>
+      </div>
+    </div>
+    <div class="report-body" id="report-body"></div>
+  </div>
+
+  <div class="page" id="pg-stats">
+    <div class="ph"><h1>Results</h1><p>Track your progress over time.</p></div>
+    <div class="stabs">
+      <button class="stab on" onclick="setStat('day',this)">Today</button>
+      <button class="stab" onclick="setStat('week',this)">This week</button>
+      <button class="stab" onclick="setStat('month',this)">This month</button>
+    </div>
+    <div class="scards" id="scards"></div>
+    <div class="bdiv"></div>
+    <div class="bk" id="bk"></div>
+    <div class="bdiv" id="gdiv" style="display:none"></div>
+    <div id="gwrap"></div>
+</div>
+
 <script>
+// v2026.03.18.12
 // ── Config (stored in localStorage just for the keys — not data) ──
 const CFG='hbt_cfg';
 let URL_='', KEY_='';
@@ -449,786 +607,3 @@ const TYPES=[
   {id:'notes',label:'General notes',desc:'free text'}
 ];
 const MOODS=['😴','😐','🙂','😀','🔥'];
-let habits=[], logs={}, vices=[], selEmoji=EMOJIS[0], selViceEmoji=VICE_EMOJIS[0], selType='notes', statPeriod='day', openPanels={}, viewMonth=new Date().getMonth(), viewYear=new Date().getFullYear(), viewWeekOffset=0, manageTab='habits', openVicePanels={};
-
-function todayKey(){
-  // Use Amsterdam timezone (Europe/Amsterdam)
-  return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-}
-function setSyncing(s){const d=document.getElementById('sdot');if(!d)return;d.className='sync-dot'+(s==='syncing'?' syncing':s==='err'?' err':'');}
-
-// ── Connect ───────────────────────────────────────────────────────
-async function connectDB(){
-  const url=document.getElementById('cfg-url').value.trim().replace(/\/+$/,'');
-  const key=document.getElementById('cfg-key').value.trim();
-  const err=document.getElementById('setup-err');
-  err.style.display='none';
-  if(!url||!key){err.textContent='Please fill in both fields.';err.style.display='block';return;}
-  if(!url.startsWith('https://')){err.textContent='URL should start with https://';err.style.display='block';return;}
-  saveCfg(url,key);
-  document.getElementById('setup').classList.add('hidden');
-  await loadData();
-}
-
-// ── Load ──────────────────────────────────────────────────────────
-async function loadData(){
-  document.getElementById('loading').classList.remove('hidden');
-  document.getElementById('app').style.display='none';
-  try{
-    const allHabits=await sel('habits','order=sort_order.asc,id.asc');
-    habits=allHabits.filter(h=>h.type!=='avoid');
-    vices=allHabits.filter(h=>h.type==='avoid');
-    const rows=await sel('logs','order=date.desc&limit=90');
-    logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
-    // Ensure today's log exists as empty if not present (so yesterday's data doesn't bleed in)
-    const todayK=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-    if(!logs[todayK])logs[todayK]={};
-    _lastDate=todayK;
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('app').style.display='block';
-    renderHome();renderAdmin();renderViceAdmin();
-  }catch(e){
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('setup').classList.remove('hidden');
-    const err=document.getElementById('setup-err');
-    err.textContent='Connection failed: '+e.message;err.style.display='block';
-  }
-}
-
-// ── Toggle done ───────────────────────────────────────────────────
-async function toggleDone(id){
-  const k=todayKey();if(!logs[k])logs[k]={};
-  logs[k]['d'+id]=!logs[k]['d'+id];
-  renderHome();setSyncing('syncing');
-  try{await ups('logs',{date:k,data:logs[k]});setSyncing('');}
-  catch(e){setSyncing('err');showToast('Sync failed — check connection');}
-}
-function togglePanel(id){openPanels[id]=!openPanels[id];renderHome();}
-function setMoodVal(id,i){
-  const k=todayKey();if(!logs[k])logs[k]={};
-  if(!logs[k]['det'+id])logs[k]['det'+id]={};
-  logs[k]['det'+id].mood=i;
-  document.querySelectorAll('.mb'+id).forEach((b,j)=>b.classList.toggle('on',j===i));
-}
-function addWS(id){
-  const c=document.getElementById('wc'+id),d=document.createElement('div');
-  d.className='ws wsi'+id;
-  d.innerHTML=`<div class="wsh"><input type="text" class="wsn" placeholder="Exercise name"/><button class="rb" onclick="this.closest('.ws').remove()">×</button></div><div class="sf"><div class="sfl"><span>Sets</span><input type="number" class="wss" min="1" placeholder="3"/></div><div class="sfl"><span>Reps</span><input type="number" class="wsr" min="1" placeholder="10"/></div><div class="sfl"><span>Weight kg</span><input type="number" class="wsw" min="0" step=".5" placeholder="0"/></div></div>`;
-  c.appendChild(d);
-}
-async function saveDetail(id){
-  const k=todayKey();if(!logs[k])logs[k]={};
-  const h=habits.find(x=>x.id===id);if(!h)return;
-  const g=n=>document.getElementById(n+id)?.value||'';
-  if(h.type==='workout'){
-    const sets=[];
-    document.querySelectorAll('.wsi'+id).forEach(el=>{const name=el.querySelector('.wsn').value.trim();if(name)sets.push({name,sets:el.querySelector('.wss').value,reps:el.querySelector('.wsr').value,weight:el.querySelector('.wsw').value});});
-    logs[k]['det'+id]={sets};
-  }else if(h.type==='counter'){
-    const prev=logs[k]['det'+id]||{count:0};
-    logs[k]['det'+id]={count:prev.count||0};
-    openPanels[id]=false;renderHome();setSyncing('syncing');
-    try{await ups('logs',{date:k,data:logs[k]});setSyncing('');showToast('Saved!');}catch(e){setSyncing('err');showToast('Sync failed');}
-    return;
-  }else if(h.type==='yoga'){
-    if(!logs[k]['det'+id])logs[k]['det'+id]={sessions:[]};
-    const sessions=logs[k]['det'+id].sessions||[];
-    const hr=g('yhr'),hre=g('yhre'),dur=g('ydur'),notes=g('yn');
-    if(hr||hre||dur||notes){
-      sessions.push({hr,hre,dur,notes,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});
-      delete pendingMoods[id];
-      // clear inputs after save
-    }
-    logs[k]['det'+id]={sessions};
-    if(sessions.length>0)logs[k]['d'+id]=true;
-    openPanels[id]=false;renderHome();setSyncing('syncing');
-    saveLog(k).then(()=>{setSyncing('');showToast('Session saved!');}).catch(e=>{setSyncing('err');showToast('Sync failed');});
-    return;
-  }else if(h.type==='reading'){
-    if(!logs[k]['det'+id]||!logs[k]['det'+id].entries)logs[k]['det'+id]={entries:[]};
-    const book=g('rb'),pages=g('rp');
-    if(book||pages){logs[k]['det'+id].entries.push({book:book||'Unknown',pages:pages||'0'});}
-    if(logs[k]['det'+id].entries.length>0)logs[k]['d'+id]=true;
-    openPanels[id]=false;renderHome();setSyncing('syncing');
-    saveLog(k).then(()=>{setSyncing('');showToast('Entry saved!');}).catch(e=>{setSyncing('err');showToast('Sync failed');});
-    return;
-  }else if(h.type==='cycling'){logs[k]['det'+id]={dist:g('cd'),time:g('ct'),hr:g('chr')};
-  }else if(h.type==='racket'){logs[k]['det'+id]={time:g('ptime'),score:g('pscore'),opponent:g('popp'),notes:g('pnotes')};
-  }else if(h.type==='swimming'){logs[k]['det'+id]={dist:g('sd'),time:g('st')};
-  }else if(h.type==='cooking'){logs[k]['det'+id]={meal:g('cm'),notes:g('cn')};
-  }else if(h.type==='shopping'){
-    // items are managed separately via addShopItem/toggleShopItem
-    // just save current state
-    const prev=logs[k]['det'+id]||{items:[]};
-    logs[k]['det'+id]=prev;
-  }else{logs[k]['det'+id]={notes:g('gn')};}
-  openPanels[id]=false;renderHome();setSyncing('syncing');
-  try{await saveLog(k);setSyncing('');showToast('Saved!');}
-  catch(e){setSyncing('err');showToast('Sync failed: '+e.message);console.error(e);}
-}
-
-function incrCounter(id,delta){
-  const k=todayKey();
-  if(!logs[k])logs[k]={};
-  const h=habits.find(x=>x.id===id);if(!h)return;
-  if(!logs[k]['det'+id])logs[k]['det'+id]={count:0};
-  const target=h.target||1;
-  const prev=Number(logs[k]['det'+id].count)||0;
-  const next=Math.max(0,Math.min(target,prev+delta));
-  logs[k]['det'+id].count=next;
-  logs[k]['d'+id]=next>=target;
-  renderHome();
-  setSyncing('syncing');
-  saveLog(k).then(()=>{setSyncing('');showToast(next+' / '+target);}).catch(e=>{setSyncing('err');showToast('Sync failed: '+e.message);console.error(e);});
-}
-const pendingMoods={};
-function setYogaMood(id,i){
-  pendingMoods[id]=i;
-  document.querySelectorAll('.mb'+id).forEach((b,j)=>b.classList.toggle('on',j===i));
-}
-function setSessionMood(id,i){
-  pendingMoods[id]=i;
-  document.querySelectorAll('.smb'+id).forEach((b,j)=>b.classList.toggle('on',j===i));
-}
-async function removeToday(id){
-  const k=todayKey();if(!logs[k])return;
-  delete logs[k]['tod'+id];
-  delete logs[k]['d'+id];
-  delete logs[k]['det'+id];
-  setSyncing('syncing');
-  try{await saveLog(k);setSyncing('');}catch(e){setSyncing('err');}
-  renderHome();
-}
-async function addToday(id){
-  const h=habits.find(x=>x.id===id);if(!h)return;
-  const k=todayKey();if(!logs[k])logs[k]={};
-  logs[k]['tod'+id]=true;
-  setSyncing('syncing');
-  try{await ups('logs',{date:k,data:logs[k]});setSyncing('');}catch(e){setSyncing('err');}
-  renderHome();
-}
-async function removeReadingEntry(id,idx){
-  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
-  const entries=logs[k]['det'+id].entries||[];
-  entries.splice(idx,1);
-  logs[k]['det'+id].entries=entries;
-  logs[k]['d'+id]=entries.length>0;
-  renderHome();openPanels[id]=true;
-  saveLog(k).catch(()=>showToast('Sync failed'));
-}
-async function addShopItem(id){
-  const inp=document.getElementById('shopinput'+id);
-  const text=inp?.value.trim();if(!text)return;
-  const k=todayKey();if(!logs[k])logs[k]={};
-  if(!logs[k]['det'+id]||!logs[k]['det'+id].items){logs[k]['det'+id]={items:[]};}
-  if(!Array.isArray(logs[k]['det'+id].items))logs[k]['det'+id].items=[];
-  logs[k]['det'+id].items.push({text,done:false});
-  inp.value='';
-  renderHome();openPanels[id]=true;
-  saveLog(k).catch(()=>showToast('Sync failed'));
-}
-async function toggleShopItem(id,idx){
-  const k=todayKey();if(!logs[k])return;
-  if(!logs[k]['det'+id]||!Array.isArray(logs[k]['det'+id].items))return;
-  const items=logs[k]['det'+id].items||[];
-  if(!items[idx])return;
-  items[idx].done=!items[idx].done;
-  const allDone=items.length>0&&items.every(x=>x.done);
-  logs[k]['d'+id]=allDone;
-  renderHome();openPanels[id]=true;
-  saveLog(k).catch(()=>showToast('Sync failed'));
-}
-async function removeShopItem(id,idx){
-  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
-  logs[k]['det'+id].items.splice(idx,1);
-  const items=logs[k]['det'+id].items;
-  logs[k]['d'+id]=items.length>0&&items.every(x=>x.done);
-  renderHome();openPanels[id]=true;
-  saveLog(k).catch(()=>showToast('Sync failed'));
-}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function getMeta(h,log){
-  const d=log['det'+h.id],def=TYPES.find(t=>t.id===h.type)?.desc||'';
-  if(!d)return def;
-  if(h.type==='counter'){const cur=d.count||0,target=h.target||1;return cur+'/'+target+(cur>=target?' ✓':'');}
-  if(h.type==='yoga'){const sessions=d.sessions||[];if(sessions.length){const last=sessions[sessions.length-1];const p=[sessions.length+'x today'];if(last.hr||last.hre)p.push('HR '+(last.hr||'?')+'/'+(last.hre||'?'));if(last.dur)p.push(last.dur+'min');return p.join(' · ');}return def;}
-  if(h.type==='workout'&&d.sets?.length)return d.sets.map(s=>s.name).filter(Boolean).join(' · ')||def;
-  if(h.type==='reading'){const entries=d.entries||[];if(entries.length){const total=entries.reduce((s,e)=>s+(parseInt(e.pages)||0),0);const p=[entries.length===1?entries[0].book.slice(0,22):entries.length+' books'];if(total)p.push(total+' pages');return p.join(' · ');}return def;}
-  if(h.type==='cycling'){const p=[];if(d.dist)p.push(d.dist+'km');if(d.time)p.push(d.time+'min');if(d.hr)p.push('HR '+d.hr);return p.join(' · ')||def;}
-  if(h.type==='racket'){const p=[];if(d.time)p.push(d.time+'min');if(d.score)p.push(d.score);if(d.opponent)p.push('vs '+d.opponent.slice(0,15));return p.join(' · ')||def;}
-  if(h.type==='swimming'){const p=[];if(d.dist)p.push(d.dist+'m');if(d.time)p.push(d.time+'min');return p.join(' · ')||def;}
-  if(h.type==='cooking')return[d.meal,d.notes].filter(Boolean).join(' · ').slice(0,40)||def;
-  if(h.type==='shopping'){const items=d.items||[];const done=items.filter(x=>x.done).length;return items.length?done+'/'+items.length+' items'+(done===items.length?' ✓':''):def;}
-  return d.notes?.slice(0,40)||def;
-}
-function buildPanel(h,log){
-  const d=log['det'+h.id]||{},id=h.id;
-  if(h.type==='workout'){const sh=(d.sets||[]).map(s=>`<div class="ws wsi${id}"><div class="wsh"><input type="text" class="wsn" placeholder="Exercise name" value="${esc(s.name||'')}"/><button class="rb" onclick="this.closest('.ws').remove()">×</button></div><div class="sf"><div class="sfl"><span>Sets</span><input type="number" class="wss" min="1" placeholder="3" value="${esc(s.sets||'')}"/></div><div class="sfl"><span>Reps</span><input type="number" class="wsr" min="1" placeholder="10" value="${esc(s.reps||'')}"/></div><div class="sfl"><span>Weight kg</span><input type="number" class="wsw" min="0" step=".5" placeholder="0" value="${esc(s.weight||'')}"/></div></div></div>`).join('');return`<div class="dst">Workout log</div><div class="wlist" id="wc${id}">${sh}</div><button class="asb" onclick="addWS(${id})">+ add exercise</button><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  // yoga handled below
-  if(h.type==='reading'){
-    const entries=d.entries||[];
-    const total=entries.reduce((s,e)=>s+(parseInt(e.pages)||0),0);
-    const entriesHtml=entries.map((e,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">${esc(e.book)}</span><button class="rb" onclick="removeReadingEntry(${id},${i})">×</button></div><div style="font-size:13px;color:var(--m)">${e.pages} pages</div></div>`).join('');
-    return`${entries.length?`<div class="dst">Today's reading${total?' · '+total+' pages total':''}</div><div class="session-list">${entriesHtml}</div>`:''}<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;font-weight:500">Add book</div><div class="fr"><label>Book</label><input type="text" id="rb${id}" placeholder="Book title"/></div><div class="fr"><label>Pages read</label><input type="number" id="rp${id}" placeholder="e.g. 30"/></div></div><button class="svb" onclick="saveDetail(${id})">Save entry</button>`;
-  }
-  if(h.type==='cycling'){return`<div class="dst">Ride details</div><div class="fr"><label>Distance (km)</label><input type="number" id="cd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="ct${id}" placeholder="0" value="${esc(d.time||'')}"/></div><div class="fr"><label>Avg HR (bpm)</label><input type="number" id="chr${id}" placeholder="0" value="${esc(d.hr||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  if(h.type==='counter'){
-    const cur=d.count||0,target=h.target||1;
-    return`<div class="dst">Daily counter</div><div class="counter-row"><button class="ctr-btn" onclick="incrCounter(${id},-1)">−</button><div style="flex:1;text-align:center"><div class="counter-val">${cur}</div><div class="counter-sub">of ${target}</div></div><button class="ctr-btn plus" onclick="incrCounter(${id},1)">+</button></div><div class="fr"><label>Target / day</label><input type="number" id="ctarget${id}" placeholder="${target}" value="${target}" min="1" max="99" onchange="updateTarget(${id},this.value)"/></div>`;
-  }
-  if(h.type==='yoga'){
-    const sessions=d.sessions||[];
-    const pendingMood=pendingMoods[id];
-    const sessionHtml=sessions.map((s,i)=>`<div class="session-card"><div class="session-header"><span class="session-label">Session ${i+1}${s.time?' · '+s.time:''}</span><button class="rb" onclick="removeSession(${id},${i})">×</button></div>${(s.hr||s.hre||s.dur)?`<div style="font-size:13px;color:var(--m);line-height:1.8">${s.hr?'↑ <strong style=color:var(--t)>'+s.hr+'</strong>':''} ${s.hre?'↓ <strong style=color:var(--t)>'+s.hre+'</strong> bpm':''} ${s.dur?'· <strong style=color:var(--t)>'+s.dur+'</strong> min':''}</div>`:''}${s.notes?`<div style="font-size:13px;color:var(--m);margin-top:4px">${esc(s.notes)}</div>`:''}</div>`).join('');
-    return`${sessions.length?`<div class="dst">Today's sessions (${sessions.length})</div><div class="session-list">${sessionHtml}</div>`:''}<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);padding:11px 12px;margin-bottom:9px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;font-weight:500">Add session</div><div class="fr"><label>Highest HR</label><input type="number" id="yhr${id}" placeholder="bpm"/></div><div class="fr"><label>Lowest HR</label><input type="number" id="yhre${id}" placeholder="bpm"/></div><div class="fr"><label>Duration (min)</label><input type="number" id="ydur${id}" placeholder="e.g. 30"/></div><div class="fr"><label>How did it feel?</label><textarea id="yn${id}" placeholder="Describe your session..."></textarea></div></div><button class="svb" onclick="saveDetail(${id})">Save session</button>`;
-  }
-  if(h.type==='racket'){return`<div class="dst">Padel / Tennis</div><div class="fr"><label>Duration (min)</label><input type="number" id="ptime${id}" placeholder="60" value="${esc(d.time||'')}"/></div><div class="fr"><label>Score</label><input type="text" id="pscore${id}" placeholder="e.g. 6-4, 7-5" value="${esc(d.score||'')}"/></div><div class="fr"><label>Opponent(s)</label><input type="text" id="popp${id}" placeholder="Who did you play with?" value="${esc(d.opponent||'')}"/></div><div class="fr"><label>Notes</label><textarea id="pnotes${id}" placeholder="How did it go?">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  if(h.type==='swimming'){return`<div class="dst">Swim details</div><div class="fr"><label>Distance (m)</label><input type="number" id="sd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="st${id}" placeholder="0" value="${esc(d.time||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  if(h.type==='cooking'){return`<div class="dst">Cooking log</div><div class="fr"><label>Meal</label><input type="text" id="cm${id}" placeholder="What did you make?" value="${esc(d.meal||'')}"/></div><div class="fr"><label>Notes</label><textarea id="cn${id}" placeholder="Recipe notes...">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;}
-  if(h.type==='shopping'){
-    const items=d.items||[];
-    const allDone=items.length>0&&items.every(x=>x.done);
-    const itemsHtml=items.map((item,i)=>`<div onclick="toggleShopItem(${id},${i})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:0.5px solid var(--b);cursor:pointer;user-select:none"><div style="width:20px;height:20px;border-radius:50%;border:1.5px solid ${item.done?'var(--acc)':'var(--b2)'};background:${item.done?'var(--acc)':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${item.done?'<svg viewBox="0 0 12 12" width="10" height="10"><path d="M2 6l2.5 2.5L10 3.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>':''}</div><span style="font-size:14px;flex:1;${item.done?'text-decoration:line-through;color:var(--m)':'color:var(--t)'}">${esc(item.text)}</span><button onclick="event.stopPropagation();removeShopItem(${id},${i})" style="border:none;background:transparent;color:var(--m);font-size:16px;cursor:pointer;padding:0 4px">×</button></div>`).join('');
-    return`<div class="dst">Shopping list${items.length?' ('+items.filter(x=>x.done).length+'/'+items.length+')':''}</div>${items.length?`<div style="background:var(--card);border:0.5px solid var(--b);border-radius:var(--r12);overflow:hidden;margin-bottom:10px">${itemsHtml}</div>`:''}<div style="display:flex;gap:8px;margin-bottom:10px"><input type="text" id="shopinput${id}" placeholder="Add item..." style="flex:1;padding:9px 11px;border:0.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--t);outline:none" onkeydown="if(event.key==='Enter')addShopItem(${id})"/><button onclick="addShopItem(${id})" style="padding:9px 16px;background:var(--acc);color:white;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer">Add</button></div>`;
-  }
-  return`<div class="dst">Notes</div><div class="fr"><textarea id="gn${id}" placeholder="Add a note for today...">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
-}
-
-// ── Render Home ───────────────────────────────────────────────────
-function renderHome(){
-  const now=new Date(),h=now.getHours();
-  document.getElementById('greet').textContent=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
-  document.getElementById('tdate').textContent=now.toLocaleDateString('en-NL',{weekday:'long',day:'numeric',month:'long'});
-  const active=habits.filter(x=>x.active),k=todayKey(),log=logs[k]||{};
-  const todayExtraForCount=habits.filter(x=>!x.active&&log['tod'+x.id]);const allActive=[...active,...todayExtraForCount];const done=allActive.filter(x=>log['d'+x.id]).length;
-  const pb=document.getElementById('pbwrap'),list=document.getElementById('hlist');
-  if(!active.length&&!habits.filter(x=>!x.active&&log['tod'+x.id]).length){pb.style.display='none';list.innerHTML=`<div class="es"><div class="ebi">🌱</div><p>No habits set for today.<br>Go to Manage to add some.</p><button onclick="nav('admin')">Set up habits</button></div>`;return;}
-  pb.style.display='block';
-  const pct=Math.round(done/allActive.length*100);
-  document.getElementById('ptxt').textContent=done+' of '+allActive.length+' done';
-  document.getElementById('ppct').textContent=pct+'%';
-  document.getElementById('pfill').style.width=pct+'%';
-  const inactive=habits.filter(x=>!x.active&&!log['tod'+x.id]);
-  const todayExtra=habits.filter(x=>!x.active&&!!log['tod'+x.id]);
-  const allToday=[...active,...todayExtra];
-  list.innerHTML=allToday.map(habit=>{
-    const isDone=!!log['d'+habit.id],isOpen=!!openPanels[habit.id];
-    const isExtra=!habit.active&&!!log['tod'+habit.id];
-    const removeBtn=isExtra?`<button onclick="removeToday(${habit.id})" style="width:26px;height:26px;border:0.5px solid var(--b2);background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--m);font-size:14px;flex-shrink:0;margin-right:2px">×</button>`:'';
-    return`<div class="hi${isDone?' done':''}"><div class="hrow"><div class="hchk" onclick="toggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="toggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div>${removeBtn}<button class="dbt${isOpen?' op':''}" onclick="togglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="14" height="14"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildPanel(habit,log)}</div></div>`;
-  }).join('')+(inactive.length?`<div style="margin-top:6px;padding:0 2px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;font-weight:500">Not planned today</div>${inactive.map(habit=>`<div class="hi inactive" style="margin-bottom:8px"><div class="hrow"><span class="hem">${habit.emoji}</span><div class="hinf"><div class="hn">${esc(habit.name)}</div></div><button class="add-today-btn" onclick="addToday(${habit.id})">+ add today</button></div></div>`).join('')}</div>`:'');
-}
-
-// ── Render Admin ──────────────────────────────────────────────────
-let dragSrcId=null;
-
-function renderAdmin(){
-  const active=habits.filter(x=>x.active).length;
-  document.getElementById('anote').textContent=active+' habit'+(active!==1?'s':'')+' active for today';
-  const list=document.getElementById('alist');
-  list.innerHTML=habits.map(h=>{const t=TYPES.find(x=>x.id===h.type);return`<div class="ai" draggable="true" data-id="${h.id}"><div class="drag-handle" title="Drag to reorder"><svg viewBox="0 0 20 20" width="18" height="18"><line x1="4" y1="6" x2="16" y2="6"/><line x1="4" y1="10" x2="16" y2="10"/><line x1="4" y1="14" x2="16" y2="14"/></svg></div><span class="aiem">${h.emoji}</span><div class="aiinf"><div class="ain">${esc(h.name)}</div><div class="ait">${t?t.label:'Notes'}</div></div><div class="tog${h.active?' on':''}" onclick="toggleA(${h.id})"></div><button class="delb" onclick="delH(${h.id})">×</button></div>`;}).join('')||`<div style="text-align:center;padding:24px;color:var(--m);font-size:14px">No habits yet — add one below.</div>`;
-  setupDrag();
-  document.getElementById('epick').innerHTML=EMOJIS.map(e=>`<button class="eb${e===selEmoji?' on':''}" onclick="pickE('${e}')">${e}</button>`).join('');
-  document.getElementById('tgrid').innerHTML=TYPES.map(t=>`<button class="tb${t.id===selType?' on':''}" onclick="pickT('${t.id}')">${t.label}</button>`).join('');
-}
-function setupDrag(){
-  const items=document.querySelectorAll('#alist .ai[draggable]');
-  let touchDragId=null,touchClone=null;
-  items.forEach(el=>{
-    el.addEventListener('dragstart',e=>{dragSrcId=parseInt(el.dataset.id);el.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
-    el.addEventListener('dragend',e=>{el.classList.remove('dragging');document.querySelectorAll('.ai').forEach(x=>x.classList.remove('drag-over'));});
-    el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.ai').forEach(x=>x.classList.remove('drag-over'));el.classList.add('drag-over');});
-    el.addEventListener('drop',e=>{e.preventDefault();const targetId=parseInt(el.dataset.id);if(dragSrcId===targetId)return;const fi=habits.findIndex(x=>x.id===dragSrcId),ti=habits.findIndex(x=>x.id===targetId);if(fi<0||ti<0)return;const [moved]=habits.splice(fi,1);habits.splice(ti,0,moved);habits.forEach((h,i)=>h.sort_order=i);saveSortOrder();renderAdmin();});
-    // Touch support
-    el.addEventListener('touchstart',e=>{touchDragId=parseInt(el.dataset.id);el.classList.add('dragging');},{passive:true});
-    el.addEventListener('touchend',e=>{
-      el.classList.remove('dragging');
-      document.querySelectorAll('.ai').forEach(x=>x.classList.remove('drag-over'));
-      const t=e.changedTouches[0];
-      const target=document.elementFromPoint(t.clientX,t.clientY)?.closest('.ai[draggable]');
-      if(target&&touchDragId){
-        const targetId=parseInt(target.dataset.id);
-        if(touchDragId!==targetId){
-          const fi=habits.findIndex(x=>x.id===touchDragId),ti=habits.findIndex(x=>x.id===targetId);
-          if(fi>=0&&ti>=0){const [moved]=habits.splice(fi,1);habits.splice(ti,0,moved);habits.forEach((h,i)=>h.sort_order=i);saveSortOrder();renderAdmin();}
-        }
-      }
-      touchDragId=null;
-    },{passive:true});
-    el.addEventListener('touchmove',e=>{
-      const t=e.touches[0];
-      const target=document.elementFromPoint(t.clientX,t.clientY)?.closest('.ai[draggable]');
-      document.querySelectorAll('.ai').forEach(x=>x.classList.remove('drag-over'));
-      if(target&&parseInt(target.dataset.id)!==touchDragId)target.classList.add('drag-over');
-    },{passive:true});
-  });
-}
-function removeSession(id,idx){
-  const k=todayKey();
-  if(!logs[k]||!logs[k]['det'+id])return;
-  const sessions=logs[k]['det'+id].sessions||[];
-  sessions.splice(idx,1);
-  logs[k]['det'+id].sessions=sessions;
-  if(!sessions.length)logs[k]['d'+id]=false;
-  renderHome();
-  setSyncing('syncing');
-  saveLog(k).then(()=>setSyncing('')).catch(()=>{setSyncing('err');showToast('Sync failed');});
-}
-function getLog(k){if(!logs[k])logs[k]={date:k};return logs[k];}
-async function updateTarget(id,val){
-  const h=habits.find(x=>x.id===id);if(!h)return;
-  h.target=parseInt(val)||1;
-  try{await ups('habits',{...h});}catch(e){}
-}
-async function saveSortOrder(){
-  try{for(const h of habits)await ups('habits',{...h});showToast('Order saved!');}
-  catch(e){showToast('Sync failed');}
-}
-function pickE(e){selEmoji=e;renderAdmin();}
-function pickVE(e){
-  selViceEmoji=e;
-  document.querySelectorAll('#vepick .eb').forEach(b=>{
-    b.classList.toggle('on', b.textContent===e);
-  });
-}
-function pickT(t){selType=t;renderAdmin();const w=document.getElementById('counter-target-wrap');if(w)w.style.display=t==='counter'?'block':'none';}
-async function toggleA(id){const h=habits.find(x=>x.id===id);if(!h)return;h.active=!h.active;renderAdmin();try{await ups('habits',{...h});}catch(e){showToast('Sync failed');}}
-async function delH(id){habits=habits.filter(x=>x.id!==id);renderAdmin();try{await del('habits','id',id);}catch(e){showToast('Sync failed');}}
-async function addH(){
-  const inp=document.getElementById('nhn'),name=inp.value.trim();
-  if(!name){inp.focus();return;}
-  const target=selType==='counter'?parseInt(document.getElementById('new-target')?.value||'1'):undefined;  const h={id:Date.now(),name,emoji:selEmoji,type:selType,active:true,sort_order:habits.length,...(target?{target}:{})};
-  habits.push(h);inp.value='';renderAdmin();
-  try{await ups('habits',h);showToast('Habit added!');}catch(e){showToast('Sync failed');}
-}
-document.getElementById('nhn').addEventListener('keydown',e=>{if(e.key==='Enter')addH();});
-
-// ── Render Stats ──────────────────────────────────────────────────
-function setStat(p,el){
-  statPeriod=p;
-  viewWeekOffset=0;
-  viewMonth=new Date().getMonth();
-  viewYear=new Date().getFullYear();
-  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
-  el.classList.add('on');
-  renderStats();
-}
-function getDays(p){
-  const keys=[];
-  if(p==='day'){keys.push(new Date().toISOString().slice(0,10));return keys;}
-  if(p==='week'){
-    const today=new Date();
-    const monday=new Date(today);
-    monday.setDate(today.getDate()-((today.getDay()+6)%7)+viewWeekOffset*7);
-    for(let i=0;i<7;i++){const d=new Date(monday);d.setDate(monday.getDate()+i);keys.push(d.toISOString().slice(0,10));}
-    return keys;
-  }
-  if(p==='month'){
-    const daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
-    for(let i=1;i<=daysInMonth;i++){
-      const d=new Date(viewYear,viewMonth,i);
-      keys.push(d.toISOString().slice(0,10));
-    }
-    return keys;
-  }
-  return keys;
-}
-function getNavLabel(){
-  if(statPeriod==='week'){
-    const today=new Date();
-    const monday=new Date(today);
-    monday.setDate(today.getDate()-((today.getDay()+6)%7)+viewWeekOffset*7);
-    const sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
-    return monday.toLocaleDateString('en-NL',{day:'numeric',month:'short'})+' – '+sunday.toLocaleDateString('en-NL',{day:'numeric',month:'short',year:'numeric'});
-  }
-  if(statPeriod==='month'){
-    return new Date(viewYear,viewMonth,1).toLocaleDateString('en-NL',{month:'long',year:'numeric'});
-  }
-  return '';
-}
-function navPeriod(dir){
-  if(statPeriod==='week')viewWeekOffset+=dir;
-  if(statPeriod==='month'){
-    viewMonth+=dir;
-    if(viewMonth>11){viewMonth=0;viewYear++;}
-    if(viewMonth<0){viewMonth=11;viewYear--;}
-  }
-  renderStats();
-}
-function calcStreak(){let s=0;const t=new Date(),active=habits.filter(x=>x.active);if(!active.length)return 0;for(let i=0;i<365;i++){const d=new Date(t);d.setDate(d.getDate()-i);const log=logs[d.toISOString().slice(0,10)]||{};if(active.some(h=>log['d'+h.id]))s++;else if(i>0)break;}return s;}
-function renderStats(){
-  const scEl=document.getElementById('scards');
-  if(!scEl)return; // page not loaded yet
-  const days=getDays(statPeriod),active=habits.filter(x=>x.active);
-  let tp=0,td=0;const ph={};active.forEach(h=>{ph[h.id]={d:0,p:0};});
-  days.forEach(day=>{const log=logs[day]||{};active.forEach(h=>{ph[h.id].p++;tp++;if(log['d'+h.id]){ph[h.id].d++;td++;}});});
-  const pct=tp>0?Math.round(td/tp*100):0,pl=statPeriod==='day'?'today':statPeriod==='week'?'this week':new Date(viewYear,viewMonth,1).toLocaleDateString('en-NL',{month:'long'});
-  document.getElementById('scards').innerHTML=`<div class="sc"><div class="sl">Completion</div><div class="sv">${pct}%</div><div class="ss">${td}/${tp} ${pl}</div></div><div class="sc"><div class="sl">Day streak</div><div class="sv">${calcStreak()}</div><div class="ss">consecutive days</div></div><div class="sc"><div class="sl">Days tracked</div><div class="sv">${days.filter(d=>logs[d]).length}</div><div class="ss">out of ${days.length}</div></div><div class="sc"><div class="sl">Active habits</div><div class="sv">${active.length}</div><div class="ss">set for today</div></div>`;
-  document.getElementById('bk').innerHTML=!active.length?`<p style="font-size:14px;color:var(--m);text-align:center;padding:14px 0">No active habits to show.</p>`:`<div class="bkt">Per habit</div>`+active.map(h=>{const p=ph[h.id].p>0?Math.round(ph[h.id].d/ph[h.id].p*100):0;return`<div class="brow"><span style="font-size:16px;width:22px;text-align:center">${h.emoji}</span><span style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)">${esc(h.name)}</span><div class="bbar"><div class="bbf" style="width:${p}%"></div></div><span class="bpct">${p}%</span></div>`;}).join('');
-  if(statPeriod!=='day'){
-    document.getElementById('gdiv').style.display='block';
-    const cols=statPeriod==='week'?7:7;
-    const isFuture=(d)=>new Date(d+'T12:00:00')>new Date();
-    const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-    const navLabel=getNavLabel();
-    const isCurrentPeriod=(statPeriod==='week'&&viewWeekOffset===0)||(statPeriod==='month'&&viewMonth===new Date().getMonth()&&viewYear===new Date().getFullYear());
-    // for month view, add empty cells for day-of-week offset
-    let prefixCells='';
-    if(statPeriod==='month'){
-      const firstDay=new Date(viewYear,viewMonth,1).getDay();
-      const offset=(firstDay+6)%7; // Monday=0
-      for(let i=0;i<offset;i++)prefixCells+=`<div class="dc" style="opacity:0"></div>`;
-    }
-    const dayLabels=statPeriod==='week'?'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:0 20px;margin-bottom:4px">'+['Mo','Tu','We','Th','Fr','Sa','Su'].map(d=>`<div style="font-size:10px;color:var(--m);text-align:center">${d}</div>`).join('')+'</div>':'';
-    document.getElementById('gwrap').innerHTML=
-      `<div style="display:flex;align-items:center;padding:0 20px;margin-bottom:8px;gap:8px">
-        <button onclick="navPeriod(-1)" style="width:30px;height:30px;border:0.5px solid var(--b2);background:transparent;border-radius:var(--r8);cursor:pointer;color:var(--t);font-size:16px;display:flex;align-items:center;justify-content:center">‹</button>
-        <span style="flex:1;text-align:center;font-size:13px;font-weight:500;color:var(--t)">${navLabel}</span>
-        <button onclick="navPeriod(1)" ${isCurrentPeriod?'disabled style="width:30px;height:30px;border:0.5px solid var(--b);background:transparent;border-radius:var(--r8);cursor:default;color:var(--m);font-size:16px;display:flex;align-items:center;justify-content:center;opacity:0.3"':'style="width:30px;height:30px;border:0.5px solid var(--b2);background:transparent;border-radius:var(--r8);cursor:pointer;color:var(--t);font-size:16px;display:flex;align-items:center;justify-content:center"'}>›</button>
-      </div>
-      ${dayLabels}
-      <div class="dgrid" style="grid-template-columns:repeat(${cols},1fr)">
-        ${prefixCells}${days.map(day=>{
-          const log=logs[day]||{},dn=active.filter(h=>log['d'+h.id]).length,label=new Date(day+'T12:00:00').getDate();
-          const isToday=day===today;
-          let c='none';
-          if(!isFuture(day)&&active.length){const r=dn/active.length;if(r===1)c='full';else if(r>0)c='part';}
-          const todayRing=isToday&&c==='none'?'border:1.5px solid var(--acc);':'';
-          return`<div class="dc ${c}" style="${todayRing}${isFuture(day)?'opacity:0.3;cursor:default':''}" ${!isFuture(day)?`onclick="openDayReport('${day}')"`:''}>${label}</div>`;
-        }).join('')}
-      </div>`;
-  }
-  else{document.getElementById('gdiv').style.display='none';document.getElementById('gwrap').innerHTML='';}
-}
-
-// ── Nav & Toast ───────────────────────────────────────────────────
-function openDayReport(dateKey){
-  const log=logs[dateKey]||{};
-  const date=new Date(dateKey+'T12:00:00');
-  const label=date.toLocaleDateString('en-NL',{weekday:'long',day:'numeric',month:'long'});
-  document.getElementById('report-title').textContent=label;
-  const allH=habits;
-  const doneCount=allH.filter(h=>log['d'+h.id]).length;
-  const activeCount=allH.filter(h=>log['d'+h.id]!==undefined||allH.some(x=>x.active)).length;
-  const reportHabits=allH.filter(h=>h.active||log['tod'+h.id]);  document.getElementById('report-subtitle').textContent=doneCount+' of '+reportHabits.length+' habits completed';
-
-  const body=document.getElementById('report-body');
-  const activeHabits=allH.filter(h=>h.active||log['tod'+h.id]);
-
-  if(!activeHabits.length){
-    body.innerHTML=`<div class="report-empty"><div class="ei">📋</div><p>No habits set up yet.</p></div>`;
-  } else {
-    const doneHabits=activeHabits.filter(h=>!!log['d'+h.id]);
-    const skippedHabits=activeHabits.filter(h=>!log['d'+h.id]);
-    const sortedHabits=[...doneHabits,...skippedHabits];
-    const dividerIdx=doneHabits.length;
-    // Add vices section at the end
-  const viceSection=vices.length?`<div style="margin-top:20px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Vices</div>${vices.map(v=>{const vs=calcViceStats(v);const vlog=logs[dateKey]||{};const slipped=!!vlog['slip'+v.id];const clean=!!vlog['clean'+v.id];const status=slipped?'<span style="color:#D85A30;font-size:12px;font-weight:500">✗ Slipped</span>':clean?'<span style="color:var(--acc);font-size:12px;font-weight:500">✓ Clean</span>':'<span style="color:var(--m);font-size:12px">Not logged</span>';return`<div class="report-habit" style="${slipped?'opacity:1':''}"><div class="report-habit-header"><span style="font-size:20px">${v.emoji}</span><div style="flex:1"><div class="report-habit-name">${esc(v.name)} ${status}</div><div style="font-size:12px;color:var(--m);margin-top:2px">Streak at this point: ${vs.streak} days</div></div></div></div>`;}).join('')}</div>`:'';
-
-  body.innerHTML=sortedHabits.map((h,idx)=>{
-      const isFirst=idx===dividerIdx&&dividerIdx>0&&dividerIdx<sortedHabits.length;
-      const divider=isFirst?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px">Not done today</div>`:'';
-      const done=!!log['d'+h.id];
-      const det=log['det'+h.id];
-      const badge=done?'<span class="badge-done">Done</span>':'<span class="badge-skip">Skipped</span>';
-      let detailHtml='';
-
-      if(det){
-        if(h.type==='yoga'){
-          const sessions=det.sessions||[];
-          if(sessions.length){
-            detailHtml=sessions.map((s,i)=>`
-              <div class="report-session">
-                <div class="report-session-title">Session ${i+1}${s.time?' · '+s.time:''}</div>
-                ${s.hr?`<div class="report-field"><span class="report-field-label">Highest HR</span><span class="report-field-val">${s.hr} bpm</span></div>`:''}${s.hre?`<div class="report-field"><span class="report-field-label">Lowest HR</span><span class="report-field-val">${s.hre} bpm</span></div>`:''}${s.dur?`<div class="report-field"><span class="report-field-label">Duration</span><span class="report-field-val">${s.dur} min</span></div>`:''}
-                
-                ${s.notes?`<div class="report-field"><span class="report-field-label">Notes</span><span class="report-field-val">${esc(s.notes)}</span></div>`:''}
-              </div>`).join('');
-          }
-        } else if(h.type==='counter'){
-          const target=h.target||1;
-          detailHtml=`<div class="report-field"><span class="report-field-label">Count</span><span class="report-field-val">${det.count||0} / ${target}</span></div>`;
-        } else if(h.type==='workout'){
-          const sets=det.sets||[];
-          if(sets.length){
-            detailHtml=sets.map(s=>`<div class="report-field"><span class="report-field-label">${esc(s.name)}</span><span class="report-field-val">${[s.sets&&s.sets+'×',s.reps&&s.reps+' reps',s.weight&&s.weight+'kg'].filter(Boolean).join(' · ')||'logged'}</span></div>`).join('');
-          }
-        } else if(h.type==='reading'){
-          if(det.book||det.pages) detailHtml=`${det.book?`<div class="report-field"><span class="report-field-label">Book</span><span class="report-field-val">${esc(det.book)}</span></div>`:''}${det.pages?`<div class="report-field"><span class="report-field-label">Pages read</span><span class="report-field-val">${det.pages}</span></div>`:''}`;
-        } else if(h.type==='racket'){
-          detailHtml=[det.time&&`<div class="report-field"><span class="report-field-label">Duration</span><span class="report-field-val">${det.time} min</span></div>`,det.score&&`<div class="report-field"><span class="report-field-label">Score</span><span class="report-field-val">${esc(det.score)}</span></div>`,det.opponent&&`<div class="report-field"><span class="report-field-label">Opponent</span><span class="report-field-val">${esc(det.opponent)}</span></div>`,det.notes&&`<div class="report-field"><span class="report-field-label">Notes</span><span class="report-field-val">${esc(det.notes)}</span></div>`].filter(Boolean).join('');
-        } else if(h.type==='cycling'){
-          detailHtml=[det.dist&&`<div class="report-field"><span class="report-field-label">Distance</span><span class="report-field-val">${det.dist} km</span></div>`,det.time&&`<div class="report-field"><span class="report-field-label">Time</span><span class="report-field-val">${det.time} min</span></div>`,det.hr&&`<div class="report-field"><span class="report-field-label">Avg HR</span><span class="report-field-val">${det.hr} bpm</span></div>`].filter(Boolean).join('');
-        } else if(h.type==='swimming'){
-          detailHtml=[det.dist&&`<div class="report-field"><span class="report-field-label">Distance</span><span class="report-field-val">${det.dist} m</span></div>`,det.time&&`<div class="report-field"><span class="report-field-label">Time</span><span class="report-field-val">${det.time} min</span></div>`].filter(Boolean).join('');
-        } else if(h.type==='shopping'){
-          const items=det.items||[];
-          if(items.length) detailHtml=items.map(item=>`<div class="report-field"><span class="report-field-label" style="${item.done?'text-decoration:line-through;color:var(--m)':''}">${esc(item.text)}</span><span class="report-field-val" style="text-align:right">${item.done?'✓':''}</span></div>`).join('');
-        } else if(h.type==='cooking'){
-          detailHtml=[det.meal&&`<div class="report-field"><span class="report-field-label">Meal</span><span class="report-field-val">${esc(det.meal)}</span></div>`,det.notes&&`<div class="report-field"><span class="report-field-label">Notes</span><span class="report-field-val">${esc(det.notes)}</span></div>`].filter(Boolean).join('');
-        } else if(det.notes){
-          detailHtml=`<div class="report-field"><span class="report-field-label">Notes</span><span class="report-field-val">${esc(det.notes)}</span></div>`;
-        }
-      }
-
-      return divider+`<div class="report-habit" style="${done?'':'opacity:0.45'}">
-        <div class="report-habit-header">
-          <span style="font-size:20px">${h.emoji}</span>
-          <div style="flex:1"><div class="report-habit-name">${esc(h.name)}${badge}</div></div>
-        </div>
-        ${detailHtml?`<div class="report-detail">${detailHtml}</div>`:''}
-      </div>`;
-    }).join('');
-  }
-
-  body.innerHTML+=viceSection;
-  document.getElementById('day-report').classList.add('open');
-}
-function closeDayReport(){
-  document.getElementById('day-report').classList.remove('open');
-}
-// ── Vice helpers ─────────────────────────────────────────────────
-function calcViceStats(v){
-  const today=new Date();
-  const todayStr=today.toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-  const startDate=v.created_at?new Date(v.created_at+'T12:00:00'):new Date(todayStr+'T12:00:00');
-  let total=0,slips=0,confirmed=0,currentStreak=0,countingStreak=true;
-  const d=new Date(today);
-  while(d>=startDate){
-    const key=d.toISOString().slice(0,10);
-    const log=logs[key]||{};
-    total++;
-    if(log['slip'+v.id]){slips++;countingStreak=false;}
-    else if(log['clean'+v.id]){confirmed++;if(countingStreak)currentStreak++;}
-    else{countingStreak=false;} // unconfirmed = breaks streak
-    d.setDate(d.getDate()-1);
-  }
-  const todayLog=logs[todayStr]||{};
-  const todayStatus=todayLog['slip'+v.id]?'slipped':todayLog['clean'+v.id]?'clean':'unknown';
-  return{streak:currentStreak,total,slips,confirmed,todayStatus};
-}
-function toggleVicePanel(id){openVicePanels[id]=!openVicePanels[id];renderVices();}
-
-async function logClean(id){
-  const k=todayKey();if(!logs[k])logs[k]={};
-  logs[k]['clean'+id]=true;
-  delete logs[k]['slip'+id];
-  openVicePanels[id]=false;
-  renderVices();setSyncing('syncing');
-  saveLog(k).then(()=>{setSyncing('');showToast('Marked clean! 💪');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
-}
-async function logSlip(id){
-  const k=todayKey();if(!logs[k])logs[k]={};
-  logs[k]['slip'+id]=true;
-  openVicePanels[id]=false;
-  renderVices();setSyncing('syncing');
-  saveLog(k).then(()=>{setSyncing('');showToast('Logged.');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
-}
-async function undoSlip(id){
-  const k=todayKey();if(!logs[k])return;
-  delete logs[k]['slip'+id];
-  openVicePanels[id]=false;
-  renderVices();setSyncing('syncing');
-  saveLog(k).then(()=>{setSyncing('');showToast('Undone!');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
-}
-
-function renderVices(){
-  const k=todayKey(),log=logs[k]||{};
-  const el=document.getElementById('vices-list');
-  const empty=document.getElementById('vices-empty');
-  if(!el)return;
-  if(!el)return;
-  if(!vices.length){el.style.display='none';if(empty)empty.style.display='block';return;}
-  el.style.display='block';if(empty)empty.style.display='none';
-
-  const cleanCount=vices.filter(v=>!log['slip'+v.id]).length;
-  const confirmedToday=vices.filter(v=>log['clean'+v.id]).length;
-  const slippedToday=vices.filter(v=>log['slip'+v.id]).length;
-  const sub=document.getElementById('vices-subtitle');
-  if(sub){
-    if(slippedToday>0)sub.textContent=slippedToday+' slip'+(slippedToday>1?'s':'')+' today. Keep pushing.';
-    else if(confirmedToday===vices.length)sub.textContent='All clean today — great work! 💪';
-    else if(confirmedToday>0)sub.textContent=confirmedToday+' of '+vices.length+' confirmed clean.';
-    else sub.textContent='Tap a vice to log today\'s status.';
-  }
-
-  el.innerHTML=vices.map(v=>{
-    const st=calcViceStats(v);
-    const isOpen=!!openVicePanels[v.id];
-    const s=st.todayStatus;
-    const cardBg=s==='clean'?'background:#0a2e20;border-color:#0f4a32':s==='slipped'?'background:rgba(216,90,48,.08);border-color:rgba(216,90,48,.3)':'';
-    let mainNum,mainSub,streakLabel,dotClass;
-    if(s==='unknown'){
-      mainNum=st.streak||'?';mainSub=st.streak>0?'streak':'days';
-      streakLabel=st.confirmed+' confirmed · '+st.slips+' slips';
-      dotClass='untouched';
-    } else if(s==='clean'){
-      mainNum=st.streak;mainSub=st.streak===1?'day':'days';
-      streakLabel=st.confirmed+' / '+st.total+' days confirmed'+(st.slips>0?' · '+st.slips+' slip'+(st.slips>1?'s':''):'');
-      dotClass='clean';
-    } else {
-      mainNum=st.confirmed;mainSub='/ '+st.total;
-      streakLabel=st.confirmed+' out of '+st.total+' days clean · '+st.slips+' slip'+(st.slips>1?'s':'');
-      dotClass='slipped';
-    }
-    return`<div class="vice-card" style="${cardBg}">
-      <div style="text-align:center;min-width:52px">
-        <div class="vice-streak${s==='slipped'?' slipped':s==='unknown'?' style=color:var(--m)':''}" style="font-size:${String(mainNum).length>3?'22px':'32px'}">${mainNum}</div>
-        <div style="font-size:10px;color:var(--m);margin-top:2px">${mainSub}</div>
-      </div>
-      <div class="vice-info" onclick="toggleVicePanel(${v.id})">
-        <div class="vice-name">${v.emoji} ${esc(v.name)}</div>
-        <div class="vice-sub">${streakLabel}</div>
-      </div>
-      <div class="vice-dot ${dotClass}"></div>
-    </div>
-    <div class="slip-panel${isOpen?' op':''}">
-      ${s==='slipped'
-        ?`<div class="slip-confirm"><p>You slipped today.</p><button class="clean-btn" onclick="undoSlip(${v.id})">Undo — I didn't slip</button></div>`
-        :s==='clean'
-        ?`<div class="slip-confirm"><p>Marked clean today ✓</p><button class="slip-btn" onclick="logSlip(${v.id})">Actually I slipped</button><button class="clean-btn" onclick="toggleVicePanel(${v.id})">Close</button></div>`
-        :`<div class="slip-confirm"><p>How was today with <strong>${esc(v.name)}</strong>?</p><div style="display:flex;gap:8px"><button class="svb" style="background:var(--acc)" onclick="logClean(${v.id})">✓ Stayed clean</button><button class="slip-btn" onclick="logSlip(${v.id})">✗ I slipped</button></div></div>`
-      }
-    </div>`;
-  }).join('');
-}
-
-let todayTab='habits';
-function setTodayTab(tab){
-  todayTab=tab;
-  document.getElementById('tt-habits').classList.toggle('on',tab==='habits');
-  document.getElementById('tt-vices').classList.toggle('on',tab==='vices');
-  document.getElementById('today-habits-section').style.display=tab==='habits'?'block':'none';
-  document.getElementById('today-vices-section').style.display=tab==='vices'?'block':'none';
-  if(tab==='vices'){
-    const now=new Date(),h=now.getHours();
-    const g=document.getElementById('vices-greeting');
-    if(g)g.textContent=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
-    renderVices();
-  }
-}
-function setManageTab(tab){
-  manageTab=tab;
-  document.getElementById('mt-habits').classList.toggle('on',tab==='habits');
-  document.getElementById('mt-vices').classList.toggle('on',tab==='vices');
-  document.getElementById('manage-habits-section').style.display=tab==='habits'?'block':'none';
-  document.getElementById('manage-vices-section').style.display=tab==='vices'?'block':'none';
-}
-
-function renderViceAdmin(){
-  document.getElementById('vices-manage-note').textContent=vices.length+' vice'+(vices.length!==1?'s':'')+' tracked';
-  document.getElementById('vices-alist').innerHTML=vices.map(v=>`
-    <div class="ai">
-      <span class="aiem">${v.emoji}</span>
-      <div class="aiinf"><div class="ain">${esc(v.name)}</div><div class="ait">Avoid habit</div></div>
-      <button class="delb" onclick="delVice(${v.id})">×</button>
-    </div>`).join('')||`<div style="text-align:center;padding:24px;color:var(--m);font-size:14px">No vices yet — add one below.</div>`;
-  document.getElementById('vepick').innerHTML=VICE_EMOJIS.map(e=>`<button class="eb${e===selViceEmoji?' on':''}" onclick="pickVE('${e}')">${e}</button>`).join('');
-}
-
-async function addVice(){
-  const inp=document.getElementById('nvn'),name=inp.value.trim();
-  if(!name){inp.focus();return;}
-  const v={id:Date.now(),name,emoji:selViceEmoji,sort_order:vices.length,active:true,type:'avoid',created_at:new Date().toISOString().slice(0,10)};
-  vices.push(v);inp.value='';
-  renderViceAdmin();
-  try{await ups('habits',v);showToast('Vice added!');}catch(e){showToast('Sync failed');}
-}
-async function delVice(id){
-  vices=vices.filter(x=>x.id!==id);renderViceAdmin();
-  try{await del('habits','id',id);}catch(e){showToast('Sync failed');}
-}
-document.addEventListener('DOMContentLoaded',()=>{
-  const nvn=document.getElementById('nvn');
-  if(nvn)nvn.addEventListener('keydown',e=>{if(e.key==='Enter')addVice();});
-});
-
-function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nb').forEach(x=>x.classList.remove('on'));document.getElementById('pg-'+p).classList.add('active');document.getElementById('nb-'+p).classList.add('on');if(p==='home'){setTodayTab(todayTab);renderHome();}if(p==='admin'){renderAdmin();renderViceAdmin();setManageTab(manageTab);}if(p==='stats')renderStats();}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
-
-// ── Boot ──────────────────────────────────────────────────────────
-window.onerror=function(msg,src,line,col,err){
-  console.error('App error:',msg,'at line',line);
-  // Always hide loading on any error
-  const l=document.getElementById('loading');
-  if(l)l.classList.add('hidden');
-  return false;
-};
-// Failsafe: hide loading after 10 seconds no matter what
-setTimeout(()=>{
-  const l=document.getElementById('loading');
-  if(l&&!l.classList.contains('hidden')){
-    l.classList.add('hidden');
-    const app=document.getElementById('app');
-    if(app)app.style.display='block';
-  }
-},10000);
-loadCfg();
-let _lastDate=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-async function checkDateReset(){
-  const now=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-  if(now!==_lastDate){
-    _lastDate=now;
-    openPanels={};openVicePanels={};
-    // Reload fresh logs from DB so new day is empty
-    try{
-      const rows=await sel('logs','order=date.desc&limit=90');
-      logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
-    }catch(e){}
-    renderHome();
-    if(typeof renderVices==='function')renderVices();
-  }
-}
-let _lastHidden=0;
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){
-    _lastHidden=Date.now();
-  } else {
-    const away=Date.now()-_lastHidden;
-    // If away for more than 5 min, reload data from DB to ensure fresh state
-    if(away>5*60*1000 && URL_ && KEY_){
-      sel('logs','order=date.desc&limit=90').then(rows=>{
-        logs={};rows.forEach(r=>{logs[r.date]=r.data||{};});
-        const todayK=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
-        if(!logs[todayK])logs[todayK]={};
-        _lastDate=todayK;
-        renderHome();
-        if(typeof renderVices==='function')renderVices();
-      }).catch(()=>{});
-    } else {
-      checkDateReset();
-    }
-  }
-});
-window.addEventListener('focus',checkDateReset);
-setInterval(checkDateReset,60000);
-if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData();}
-</script>
-<script>
-// ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.11';
-const STORED_VERSION=sessionStorage.getItem('app_version');
-if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
-  sessionStorage.setItem('app_version',APP_VERSION);
-  location.reload(true);
-}else{
-  sessionStorage.setItem('app_version',APP_VERSION);
-}
-
-// Register service worker for PWA
-if('serviceWorker' in navigator){
-  try{
-    navigator.serviceWorker.register('./sw.js').then(r=>{
-      // ok
-    }).catch(e=>{
-      console.log('SW not available:', e.message);
-    });
-    navigator.serviceWorker.addEventListener('controllerchange',()=>location.reload());
-    navigator.serviceWorker.addEventListener('message',e=>{
-      if(e.data&&e.data.type==='UPDATED')location.reload();
-    });
-  }catch(e){console.log('SW error:',e);}
-}
-</script>
-</body>
-</html>
