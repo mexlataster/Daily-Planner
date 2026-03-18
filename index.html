@@ -319,7 +319,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.18';
+const APP_VERSION='2026.03.18.20';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -757,13 +757,64 @@ function renderEditDay(){
   const log=logs[editDateKey];
   const active=habits.filter(x=>x.active);
   const body=document.getElementById('edit-body');
-  if(!active.length){body.innerHTML='<div class="es"><div class="ei">🌱</div><p>No habits for this day.</p></div>';return;}
   document.getElementById('edit-sub').textContent=active.filter(h=>log['d'+h.id]).length+' of '+active.length+' done';
-  body.innerHTML=active.map(habit=>{
+  // All habits: active ones + inactive ones added for this day
+  const addedExtra=habits.filter(x=>!x.active&&log['tod'+x.id]);
+  const allForDay=[...active,...addedExtra];
+  const inactive=habits.filter(x=>!x.active&&!log['tod'+x.id]);
+
+  const habitsHtml=allForDay.length?allForDay.map(habit=>{
     const isDone=!!log['d'+habit.id];
     const isOpen=!!editPanels[habit.id];
-    return `<div class="hi${isDone?' done':''}" style="margin-bottom:9px"><div class="hrow"><div class="hchk" onclick="editToggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="editToggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div><button class="dbt${isOpen?' op':''}" onclick="editTogglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildEditPanel(habit,log)}</div></div>`;
-  }).join('');
+    const isExtra=!habit.active;
+    const rmBtn=isExtra?`<button class="rmb" onclick="editRemoveToday(${habit.id})">×</button>`:'';
+    return `<div class="hi${isDone?' done':''}" style="margin-bottom:9px"><div class="hrow"><div class="hchk" onclick="editToggleDone(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2 7l3.5 3.5L12 3.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></div><span class="hem">${habit.emoji}</span><div class="hinf" onclick="editToggleDone(${habit.id})"><div class="hn">${esc(habit.name)}</div><div class="hm">${getMeta(habit,log)}</div></div>${rmBtn}<button class="dbt${isOpen?' op':''}" onclick="editTogglePanel(${habit.id})"><svg viewBox="0 0 14 14" width="13" height="13"><path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></button></div><div class="dp${isOpen?' op':''}">${buildEditPanel(habit,log)}</div></div>`;
+  }).join(''):'<div class="es"><div class="ei">🌱</div><p>No habits.</p></div>';
+
+  // Not planned section
+  const notPlannedHtml=inactive.length?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px">Not planned this day</div>`+inactive.map(h=>`<div class="hi inactive" style="margin-bottom:8px"><div class="hrow"><span class="hem">${h.emoji}</span><div class="hinf"><div class="hn">${esc(h.name)}</div></div><button class="add-today-btn" onclick="editAddToday(${h.id})">+ add</button></div></div>`).join(''):'';
+  // Vices section
+  const vicesHtml=vices.length?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 10px">Vices</div>`+vices.map(v=>{
+    const slipped=!!log['slip'+v.id];
+    const clean=!!log['clean'+v.id];
+    const status=slipped?'slipped':clean?'clean':'unknown';
+    const cardBg=clean?'background:#0a2e20;border-color:#0f4a32':slipped?'background:rgba(216,90,48,.08);border-color:rgba(216,90,48,.3)':'';
+    return `<div style="border:.5px solid var(--b);border-radius:var(--r16);padding:13px 15px;margin-bottom:9px;display:flex;align-items:center;gap:12px;${cardBg}">
+      <span style="font-size:22px">${v.emoji}</span>
+      <div style="flex:1"><div style="font-size:15px;font-weight:500;color:var(--t)">${esc(v.name)}</div><div style="font-size:12px;color:var(--m);margin-top:2px">${slipped?'Slipped':clean?'Stayed clean':'Not logged'}</div></div>
+      <div style="display:flex;gap:7px">
+        <button onclick="editLogClean(${v.id})" style="padding:7px 12px;background:${clean?'var(--acc)':'transparent'};color:${clean?'#fff':'var(--m)'};border:.5px solid ${clean?'var(--acc)':'var(--b2)'};border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">✓</button>
+        <button onclick="editLogSlip(${v.id})" style="padding:7px 12px;background:${slipped?'#D85A30':'transparent'};color:${slipped?'#fff':'var(--m)'};border:.5px solid ${slipped?'#D85A30':'var(--b2)'};border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">✗</button>
+      </div>
+    </div>`;
+  }).join(''):'';
+  body.innerHTML=habitsHtml+notPlannedHtml+vicesHtml;
+}
+
+function editAddToday(id){
+  if(!logs[editDateKey])logs[editDateKey]={};
+  logs[editDateKey]['tod'+id]=true;
+  editPanels[id]=false;
+  renderEditDay();
+}
+function editRemoveToday(id){
+  if(!logs[editDateKey])return;
+  delete logs[editDateKey]['tod'+id];
+  delete logs[editDateKey]['d'+id];
+  delete logs[editDateKey]['det'+id];
+  renderEditDay();
+}
+function editLogClean(id){
+  const log=logs[editDateKey];
+  if(log['clean'+id]){delete log['clean'+id];}
+  else{log['clean'+id]=true;delete log['slip'+id];}
+  renderEditDay();
+}
+function editLogSlip(id){
+  const log=logs[editDateKey];
+  if(log['slip'+id]){delete log['slip'+id];}
+  else{log['slip'+id]=true;delete log['clean'+id];}
+  renderEditDay();
 }
 
 function editToggleDone(id){
