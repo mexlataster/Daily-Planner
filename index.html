@@ -1149,8 +1149,20 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // ── Boot ──────────────────────────────────────────────────────────
 window.onerror=function(msg,src,line,col,err){
   console.error('App error:',msg,'at line',line);
+  // Always hide loading on any error
+  const l=document.getElementById('loading');
+  if(l)l.classList.add('hidden');
   return false;
 };
+// Failsafe: hide loading after 10 seconds no matter what
+setTimeout(()=>{
+  const l=document.getElementById('loading');
+  if(l&&!l.classList.contains('hidden')){
+    l.classList.add('hidden');
+    const app=document.getElementById('app');
+    if(app)app.style.display='block';
+  }
+},10000);
 loadCfg();
 let _lastDate=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
 async function checkDateReset(){
@@ -1194,7 +1206,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.8';
+const APP_VERSION='2026.03.18.9';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
