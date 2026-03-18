@@ -206,8 +206,8 @@ html,body{height:100%;background:#f5f5f3;font-family:'DM Sans',sans-serif}
 .bpct{font-size:12px;color:var(--m);min-width:32px;text-align:right}
 .dgrid{display:grid;gap:5px;margin-bottom:14px;padding:0 20px}
 .dc{cursor:pointer;transition:transform .1s}.dc:active{transform:scale(0.92)}
-.day-report{position:fixed;inset:0;background:var(--bg);z-index:150;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease}
-.day-report.open{transform:translateX(0)}
+.day-report{position:fixed;inset:0;background:var(--bg);z-index:150;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease;visibility:hidden}
+.day-report.open{transform:translateX(0);visibility:visible}
 .report-header{display:flex;align-items:center;gap:12px;padding:calc(var(--safe-top) + 18px) 20px 16px;border-bottom:0.5px solid var(--b);background:var(--card);position:sticky;top:0;z-index:5}
 .report-back{width:36px;height:36px;border:0.5px solid var(--b);background:transparent;border-radius:var(--r8);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .report-back svg{stroke:var(--t);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -1206,7 +1206,7 @@ if(URL_&&KEY_){document.getElementById('setup').classList.add('hidden');loadData
 </script>
 <script>
 // ── Auto-update checker ───────────────────────────────────────────
-const APP_VERSION='2026.03.18.9';
+const APP_VERSION='2026.03.18.10';
 const STORED_VERSION=sessionStorage.getItem('app_version');
 if(STORED_VERSION&&STORED_VERSION!==APP_VERSION){
   sessionStorage.setItem('app_version',APP_VERSION);
