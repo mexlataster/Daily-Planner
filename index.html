@@ -319,7 +319,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.20';
+const APP_VERSION='2026.03.18.21';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -405,6 +405,7 @@ function getMeta(h,log){
   if(h.type==='swimming'){const p=[];if(d.dist)p.push(d.dist+'m');if(d.time)p.push(d.time+'min');return p.join(' · ')||def;}
   if(h.type==='cooking')return[d.meal,d.notes].filter(Boolean).join(' · ').slice(0,40)||def;
   if(h.type==='shopping'){const items=d.items||[];if(items.length)return items.filter(x=>x.done).length+'/'+items.length+' items'+(items.every(x=>x.done)?' ✓':'');return def;}
+  if(h.type==='notes'){const e=d.entries||[];if(e.length)return e.length+' note'+(e.length>1?'s':'')+' · '+e[e.length-1].text.slice(0,28);return def;}
   return d.notes?.slice(0,40)||def;
 }
 
@@ -426,7 +427,11 @@ function buildPanel(h,log){
   if(h.type==='swimming')return `<div class="dst">Swim</div><div class="fr"><label>Distance (m)</label><input type="number" id="sd${id}" placeholder="0" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="st${id}" placeholder="0" value="${esc(d.time||'')}"/></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
   if(h.type==='cooking')return `<div class="dst">Cooking</div><div class="fr"><label>Meal</label><input type="text" id="cm${id}" placeholder="What did you make?" value="${esc(d.meal||'')}"/></div><div class="fr"><label>Notes</label><textarea id="cn${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
   if(h.type==='shopping'){const items=d.items||[];const ih=items.map((it,i)=>`<div class="shop-item" onclick="toggleShopItem(${id},${i})"><div class="shop-chk${it.done?' done':''}">${it.done?'<svg viewBox="0 0 12 12" width="10" height="10"><path d="M2 6l2.5 2.5L10 3.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>':''}</div><span style="font-size:14px;flex:1;${it.done?'text-decoration:line-through;color:var(--m)':'color:var(--t)'}">${esc(it.text)}</span><button onclick="event.stopPropagation();removeShopItem(${id},${i})" style="border:none;background:transparent;color:var(--m);font-size:16px;cursor:pointer">×</button></div>`).join('');return `<div class="dst">Shopping${items.length?' ('+items.filter(x=>x.done).length+'/'+items.length+')':''}</div>${items.length?`<div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r12);overflow:hidden;margin-bottom:9px">${ih}</div>`:''}<div style="display:flex;gap:7px;margin-bottom:9px"><input type="text" id="shopinput${id}" placeholder="Add item…" style="flex:1;padding:8px 10px;border:.5px solid var(--b2);border-radius:var(--r8);background:var(--card);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--t);outline:none" onkeydown="if(event.key==='Enter')addShopItem(${id})"/><button onclick="addShopItem(${id})" style="padding:8px 14px;background:var(--acc);color:#fff;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">Add</button></div>`;}
-  return `<div class="dst">Notes</div><div class="fr"><textarea id="gn${id}" placeholder="Add a note…">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="saveDetail(${id})">Save</button>`;
+  {
+    const entries=d.entries||[];
+    const eh=entries.map((e,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">${esc(e.time||'')}</span><button class="rb" onclick="removeNoteEntry(${id},${i})">×</button></div><div style="font-size:14px;color:var(--t);line-height:1.5">${esc(e.text)}</div></div>`).join('');
+    return `${entries.length?`<div class="dst">Today (${entries.length})</div>${eh}`:''}<div class="fr"><textarea id="gn${id}" placeholder="What did you do?" style="min-height:70px"></textarea></div><button class="svb" onclick="saveDetail(${id})">Save entry</button>`;
+  }
 }
 
 function renderHome(){
@@ -533,7 +538,11 @@ async function saveDetail(id){
   else if(h.type==='cycling')logs[k]['det'+id]={dist:g('cd'),time:g('ct'),hr:g('chr')};
   else if(h.type==='swimming')logs[k]['det'+id]={dist:g('sd'),time:g('st')};
   else if(h.type==='cooking')logs[k]['det'+id]={meal:g('cm'),notes:g('cn')};
-  else logs[k]['det'+id]={notes:g('gn')};
+  else{
+    if(!logs[k]['det'+id]||!Array.isArray(logs[k]['det'+id].entries))logs[k]['det'+id]={entries:[]};
+    const txt=g('gn');
+    if(txt.trim()){logs[k]['det'+id].entries.push({text:txt.trim(),time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});logs[k]['d'+id]=true;}
+  }
   openPanels[id]=false;renderHome();setSyncing('syncing');saveLog(k).then(()=>{setSyncing('');showToast('Saved!');}).catch(()=>{setSyncing('err');showToast('Sync failed');});
 }
 
@@ -547,6 +556,13 @@ function incrCounter(id,delta){
   renderHome();setSyncing('syncing');saveLog(k).then(()=>{setSyncing('');showToast(next+'/'+tgt);}).catch(()=>{setSyncing('err');showToast('Sync failed');});
 }
 function removeSession(id,idx){const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;const s=logs[k]['det'+id].sessions||[];s.splice(idx,1);logs[k]['det'+id].sessions=s;if(!s.length)logs[k]['d'+id]=false;renderHome();setSyncing('syncing');saveLog(k).then(()=>setSyncing('')).catch(()=>setSyncing('err'));}
+function removeNoteEntry(id,idx){
+  const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;
+  logs[k]['det'+id].entries.splice(idx,1);
+  logs[k]['d'+id]=logs[k]['det'+id].entries.length>0;
+  renderHome();openPanels[id]=true;
+  saveLog(k).catch(()=>showToast('Sync failed'));
+}
 function removeReadingEntry(id,idx){const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;const e=logs[k]['det'+id].entries||[];e.splice(idx,1);logs[k]['det'+id].entries=e;logs[k]['d'+id]=e.length>0;renderHome();openPanels[id]=true;setSyncing('syncing');saveLog(k).then(()=>setSyncing('')).catch(()=>setSyncing('err'));}
 async function addShopItem(id){const inp=document.getElementById('shopinput'+id);const text=inp?.value.trim();if(!text)return;const k=todayKey();if(!logs[k])logs[k]={};if(!logs[k]['det'+id]||!Array.isArray(logs[k]['det'+id].items))logs[k]['det'+id]={items:[]};logs[k]['det'+id].items.push({text,done:false});inp.value='';renderHome();openPanels[id]=true;saveLog(k).catch(()=>showToast('Sync failed'));}
 async function toggleShopItem(id,idx){const k=todayKey();if(!logs[k]||!logs[k]['det'+id])return;const items=logs[k]['det'+id].items||[];if(!items[idx])return;items[idx].done=!items[idx].done;logs[k]['d'+id]=items.length>0&&items.every(x=>x.done);renderHome();openPanels[id]=true;saveLog(k).catch(()=>showToast('Sync failed'));}
@@ -713,7 +729,7 @@ function openDayReport(dateKey){editDateKey=dateKey;
       else if(h.type==='racket')det2=[det.time&&`<div class="rpt-field"><span class="rpt-fl">Duration</span><span class="rpt-fv">${det.time} min</span></div>`,det.score&&`<div class="rpt-field"><span class="rpt-fl">Score</span><span class="rpt-fv">${esc(det.score)}</span></div>`,det.opponent&&`<div class="rpt-field"><span class="rpt-fl">Opponent</span><span class="rpt-fv">${esc(det.opponent)}</span></div>`,det.notes&&`<div class="rpt-field"><span class="rpt-fl">Notes</span><span class="rpt-fv">${esc(det.notes)}</span></div>`].filter(Boolean).join('');
       else if(h.type==='cycling')det2=[det.dist&&`<div class="rpt-field"><span class="rpt-fl">Distance</span><span class="rpt-fv">${det.dist} km</span></div>`,det.time&&`<div class="rpt-field"><span class="rpt-fl">Time</span><span class="rpt-fv">${det.time} min</span></div>`,det.hr&&`<div class="rpt-field"><span class="rpt-fl">Avg HR</span><span class="rpt-fv">${det.hr} bpm</span></div>`].filter(Boolean).join('');
       else if(h.type==='shopping'){const items=det.items||[];if(items.length)det2=items.map(it=>`<div class="rpt-field"><span class="rpt-fl"${it.done?' style="text-decoration:line-through"':''}>${esc(it.text)}</span><span class="rpt-fv" style="text-align:right">${it.done?'✓':''}</span></div>`).join('');}
-      else if(det.notes)det2=`<div class="rpt-field"><span class="rpt-fl">Notes</span><span class="rpt-fv">${esc(det.notes)}</span></div>`;
+      else if(h.type==='notes'){const e=det.entries||[];if(e.length)det2=e.map(ee=>`<div class="rpt-field"><span class="rpt-fl">${esc(ee.time||'')}</span><span class="rpt-fv">${esc(ee.text)}</span></div>`).join('');else if(det.notes)det2=`<div class="rpt-field"><span class="rpt-fl">Note</span><span class="rpt-fv">${esc(det.notes)}</span></div>`;}
     }
     return `${divider}<div class="rpt-habit" style="${isDone?'':'opacity:.45'}"><div class="rpt-hh"><span style="font-size:20px">${h.emoji}</span><div style="flex:1"><div class="rpt-hn">${esc(h.name)}${badge}</div></div></div>${det2?`<div class="rpt-det">${det2}</div>`:''}</div>`;
   }).join('');
@@ -804,6 +820,20 @@ function editRemoveToday(id){
   delete logs[editDateKey]['det'+id];
   renderEditDay();
 }
+function editRemoveNote(id,idx){
+  const log=logs[editDateKey];
+  if(!log['det'+id]||!log['det'+id].entries)return;
+  log['det'+id].entries.splice(idx,1);
+  log['d'+id]=log['det'+id].entries.length>0;
+  editPanels[id]=true;renderEditDay();
+}
+function editSaveNote(id){
+  const log=logs[editDateKey];
+  if(!log['det'+id]||!Array.isArray(log['det'+id].entries))log['det'+id]={entries:[]};
+  const txt=document.getElementById('egn'+id)?.value.trim();
+  if(txt){log['det'+id].entries.push({text:txt,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});log['d'+id]=true;}
+  editPanels[id]=true;renderEditDay();
+}
 function editLogClean(id){
   const log=logs[editDateKey];
   if(log['clean'+id]){delete log['clean'+id];}
@@ -838,7 +868,11 @@ function buildEditPanel(h,log){
   if(h.type==='cycling')return `<div class="dst">Ride</div><div class="fr"><label>Distance (km)</label><input type="number" id="ecd${id}" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="ect${id}" value="${esc(d.time||'')}"/></div><div class="fr"><label>Avg HR</label><input type="number" id="echr${id}" value="${esc(d.hr||'')}"/></div><button class="svb" onclick="editSaveSimple(${id},'cycling')">Save</button>`;
   if(h.type==='swimming')return `<div class="dst">Swim</div><div class="fr"><label>Distance (m)</label><input type="number" id="esd${id}" value="${esc(d.dist||'')}"/></div><div class="fr"><label>Time (min)</label><input type="number" id="est${id}" value="${esc(d.time||'')}"/></div><button class="svb" onclick="editSaveSimple(${id},'swimming')">Save</button>`;
   if(h.type==='cooking')return `<div class="dst">Cooking</div><div class="fr"><label>Meal</label><input type="text" id="ecm${id}" value="${esc(d.meal||'')}"/></div><div class="fr"><label>Notes</label><textarea id="ecn${id}">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="editSaveSimple(${id},'cooking')">Save</button>`;
-  return `<div class="dst">Notes</div><div class="fr"><textarea id="egn${id}" placeholder="Add a note…">${esc(d.notes||'')}</textarea></div><button class="svb" onclick="editSaveSimple(${id},'notes')">Save</button>`;
+  {
+    const entries=d.entries||[];
+    const eh=entries.map((e,i)=>`<div class="sess-card"><div class="sess-hdr"><span class="sess-lbl">${esc(e.time||'')}</span><button class="rb" onclick="editRemoveNote(${id},${i})">×</button></div><div style="font-size:14px;color:var(--t);line-height:1.5">${esc(e.text)}</div></div>`).join('');
+    return `${entries.length?`<div class="dst">${entries.length} note${entries.length>1?'s':''}</div>${eh}`:''}<div class="fr"><textarea id="egn${id}" placeholder="What did you do?" style="min-height:70px"></textarea></div><button class="svb" onclick="editSaveNote(${id})">Save entry</button>`;
+  }
 }
 
 // Edit helper functions
