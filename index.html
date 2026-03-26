@@ -343,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.26.2';
+const APP_VERSION='2026.03.26.3';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -1015,15 +1015,10 @@ async function scanSleep(){
 {"score":number,"quality":"Good|Fair|Excellent|Poor","duration":"8h 1m","deep":"54m","rem":"1h 30m","light":"5h 37m","awake":"16m","hr":number,"stress":number,"restless":number}
 No explanation, just the JSON.`});
 
-    const ANTHROPIC_KEY='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';
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const ANTHROPIC_KEY='';
+    const resp=await fetch('https://habits.m-lataster1998.workers.dev/',{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':'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',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true'
-      },
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:imgContent}]})
     });
     const data=await resp.json();
