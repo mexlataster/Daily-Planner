@@ -343,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.26.7';
+const APP_VERSION='2026.03.26.8';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -830,6 +830,24 @@ function renderEditDay(){
 
   // Not planned section
   const notPlannedHtml=inactive.length?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px">Not planned this day</div>`+inactive.map(h=>`<div class="hi inactive" style="margin-bottom:8px"><div class="hrow"><span class="hem">${h.emoji}</span><div class="hinf"><div class="hn">${esc(h.name)}</div></div><button class="add-today-btn" onclick="editAddToday(${h.id})">+ add</button></div></div>`).join(''):'';
+  // Sleep section
+  const sleepSaved=log['sleep'];
+  function toMinsE(str){if(!str)return 0;const h=str.match(/(\d+)h/);const m=str.match(/(\d+)m/);return(h?parseInt(h[1])*60:0)+(m?parseInt(m[1]):0);}
+  let sleepHtml='';
+  if(sleepSaved&&sleepSaved.score){
+    const sc=sleepSaved.score,q=sleepSaved.quality||'';
+    const scoreColor=sc>=80?'#1D9E75':sc>=60?'#EF9F27':'#D85A30';
+    const qClass=q.toLowerCase().includes('excel')?'excellent':q.toLowerCase().includes('good')?'good':q.toLowerCase().includes('fair')?'fair':'poor';
+    const deepM=toMinsE(sleepSaved.deep),remM=toMinsE(sleepSaved.rem),lightM=toMinsE(sleepSaved.light),awakeM=toMinsE(sleepSaved.awake),totalM=deepM+remM+lightM+awakeM||1;
+    const r2=38,circ2=2*Math.PI*r2,dash2=circ2*(sc/100);
+    const ring2=`<svg width="90" height="90" viewBox="0 0 90 90"><circle cx="45" cy="45" r="${r2}" fill="none" stroke="var(--b)" stroke-width="7"/><circle cx="45" cy="45" r="${r2}" fill="none" stroke="${scoreColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${dash2} ${circ2-dash2}" stroke-dashoffset="${circ2/4}" transform="rotate(-90 45 45)"/><text x="45" y="41" text-anchor="middle" font-family="Fraunces,serif" font-size="20" font-weight="600" fill="${scoreColor}">${sc}</text><text x="45" y="53" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="var(--m)">/100</text></svg>`;
+    function sbarE(label,mins,color){const pct=Math.round(mins/totalM*100);const h2=Math.floor(mins/60),m2=mins%60;const dur=h2>0?h2+'h '+(m2>0?m2+'m':''):m2+'m';return mins?`<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--t)">${label}</span><span style="color:var(--m)">${dur} · ${pct}%</span></div><div style="height:5px;background:var(--bg);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:99px"></div></div></div>`:'';}
+    sleepHtml=`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">Sleep <button onclick="editClearSleep()" style="font-size:11px;color:var(--m);background:transparent;border:.5px solid var(--b2);border-radius:var(--r8);padding:3px 8px;cursor:pointer;font-family:'DM Sans',sans-serif">Re-scan</button></div><div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r16);overflow:hidden"><div style="padding:13px 15px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:14px">${ring2}<div>${q?`<div class="sleep-quality ${qClass}" style="margin-bottom:5px">${q}</div>`:''}<div style="font-size:19px;font-weight:500;color:var(--t);font-family:'Fraunces',serif">${sleepSaved.duration||''}</div><div style="font-size:12px;color:var(--m)">total sleep</div></div></div>${(deepM||remM||lightM)?`<div style="padding:13px 15px;border-bottom:.5px solid var(--b)">${sbarE('Deep',deepM,'#3B5BDB')}${sbarE('REM',remM,'#CC5DE8')}${sbarE('Light',lightM,'#74C0FC')}${sbarE('Awake',awakeM,'#FF8787')}</div>`:''}${(sleepSaved.hr||sleepSaved.stress||sleepSaved.restless)?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr">${sleepSaved.hr?`<div style="padding:10px 13px;border-right:.5px solid var(--b)"><div style="font-size:15px;font-weight:500;color:var(--t)">${sleepSaved.hr}</div><div style="font-size:10px;color:var(--m)">Resting HR</div></div>`:''} ${sleepSaved.stress?`<div style="padding:10px 13px;border-right:.5px solid var(--b)"><div style="font-size:15px;font-weight:500;color:var(--t)">${sleepSaved.stress}</div><div style="font-size:10px;color:var(--m)">Stress</div></div>`:''} ${sleepSaved.restless?`<div style="padding:10px 13px"><div style="font-size:15px;font-weight:500;color:var(--t)">${sleepSaved.restless}</div><div style="font-size:10px;color:var(--m)">Restless</div></div>`:''}</div>`:''}</div></div>`;
+  } else {
+    // Show scan UI for this date
+    sleepHtml=`<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Sleep</div><div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r16);padding:14px"><div style="font-size:13px;color:var(--m);margin-bottom:12px">Upload Garmin screenshots to log sleep for this day.</div><div class="scan-area" onclick="document.getElementById('edit-sleep-img1').click()" style="margin-bottom:8px"><div class="ei">📊</div><div style="font-size:13px;font-weight:500;color:var(--t);margin-top:4px">Summary screenshot</div><img id="edit-preview1" class="scan-preview" style="display:none"/></div><input type="file" id="edit-sleep-img1" class="scan-upload" accept="image/*" onchange="editPreviewImg(this,'edit-preview1',1)"/><div class="scan-area" onclick="document.getElementById('edit-sleep-img2').click()" style="margin-bottom:8px"><div class="ei">🌙</div><div style="font-size:13px;font-weight:500;color:var(--t);margin-top:4px">Stages screenshot (optional)</div><img id="edit-preview2" class="scan-preview" style="display:none"/></div><input type="file" id="edit-sleep-img2" class="scan-upload" accept="image/*" onchange="editPreviewImg(this,'edit-preview2',2)"/><button id="edit-scan-btn" onclick="editScanSleep()" style="width:100%;padding:11px;background:var(--acc);color:#fff;border:none;border-radius:var(--r12);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;opacity:.5" disabled>🔍 Analyse screenshots</button><div id="edit-scan-status" style="text-align:center;font-size:13px;color:var(--m);margin-top:8px;display:none"></div></div></div>`;
+  }
+
   // Vices section
   const vicesHtml=vices.length?`<div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin:18px 0 10px">Vices</div>`+vices.map(v=>{
     const slipped=!!log['slip'+v.id];
@@ -845,7 +863,7 @@ function renderEditDay(){
       </div>
     </div>`;
   }).join(''):'';
-  body.innerHTML=habitsHtml+notPlannedHtml+vicesHtml;
+  body.innerHTML=habitsHtml+notPlannedHtml+sleepHtml+vicesHtml;
 }
 
 function editAddToday(id){
@@ -874,6 +892,60 @@ function editSaveNote(id){
   const txt=document.getElementById('egn'+id)?.value.trim();
   if(txt){log['det'+id].entries.push({text:txt,time:new Date().toLocaleTimeString('en-NL',{hour:'2-digit',minute:'2-digit'})});log['d'+id]=true;}
   editPanels[id]=true;renderEditDay();
+}
+let editSleepData={img1:null,img2:null};
+function editPreviewImg(input,previewId,num){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById(previewId);
+    if(img){img.src=e.target.result;img.style.display='block';}
+    if(num===1)editSleepData.img1=e.target.result;
+    else editSleepData.img2=e.target.result;
+    const btn=document.getElementById('edit-scan-btn');
+    if(btn&&editSleepData.img1){btn.style.opacity='1';btn.disabled=false;}
+  };
+  reader.readAsDataURL(file);
+}
+async function editScanSleep(){
+  if(!editSleepData.img1){showToast('Add at least the summary screenshot');return;}
+  const status=document.getElementById('edit-scan-status');
+  const btn=document.getElementById('edit-scan-btn');
+  if(status){status.style.display='block';status.textContent='🔍 Analysing...';}
+  if(btn){btn.disabled=true;btn.style.opacity='.5';}
+  try{
+    const img1=await resizeImage(editSleepData.img1,800);
+    const img2=editSleepData.img2?await resizeImage(editSleepData.img2,800):null;
+    const toBase64=d=>d.split(',')[1];
+    const toMime=d=>d.split(';')[0].split(':')[1];
+    const imgContent=[];
+    imgContent.push({type:'image',source:{type:'base64',media_type:toMime(img1),data:toBase64(img1)}});
+    if(img2)imgContent.push({type:'image',source:{type:'base64',media_type:toMime(img2),data:toBase64(img2)}});
+    imgContent.push({type:'text',text:'Extract sleep data from these Garmin screenshots. Return ONLY valid JSON: {"score":number,"quality":"string","duration":"string","deep":"string","rem":"string","light":"string","awake":"string","hr":number,"stress":number,"restless":number}'});
+    const resp=await fetch('https://habits.m-lataster1998.workers.dev/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:imgContent}]})});
+    const rawText=await resp.text();
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=JSON.parse(rawText);
+    const text=data.content?.[0]?.text||'';
+    const jsonMatch=text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('No JSON found');
+    const parsed=JSON.parse(jsonMatch[0]);
+    parsed.img2=img2||null;
+    if(!logs[editDateKey])logs[editDateKey]={};
+    logs[editDateKey]['sleep']=parsed;
+    editSleepData={img1:null,img2:null};
+    showToast('Sleep saved! 😴');
+    renderEditDay();
+  }catch(e){
+    if(status)status.textContent='❌ '+e.message;
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+  }
+}
+function editClearSleep(){
+  if(!logs[editDateKey])return;
+  delete logs[editDateKey]['sleep'];
+  editSleepData={img1:null,img2:null};
+  renderEditDay();
 }
 function editLogClean(id){
   const log=logs[editDateKey];
