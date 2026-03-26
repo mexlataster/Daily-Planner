@@ -1,4 +1,4 @@
-const VERSION = '2026.03.26.3';
+const VERSION = '2026.03.26.4';
 const CACHE = 'habits-' + VERSION;
 
 self.addEventListener('install', e => {
@@ -16,7 +16,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Never intercept POST requests or non-GET requests
+  if (e.request.method !== 'GET') return;
   if (e.request.url.includes('supabase.co')) return;
+  if (e.request.url.includes('workers.dev')) return;
   if (e.request.url.includes('fonts.googleapis') || e.request.url.includes('fonts.gstatic') || e.request.url.includes('jsdelivr')) {
     e.respondWith(
       caches.open(CACHE).then(cache =>
