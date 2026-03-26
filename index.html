@@ -343,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.26.6';
+const APP_VERSION='2026.03.26.7';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -760,6 +760,20 @@ function openDayReport(dateKey){editDateKey=dateKey;
     }
     return `${divider}<div class="rpt-habit" style="${isDone?'':'opacity:.45'}"><div class="rpt-hh"><span style="font-size:20px">${h.emoji}</span><div style="flex:1"><div class="rpt-hn">${esc(h.name)}${badge}</div></div></div>${det2?`<div class="rpt-det">${det2}</div>`:''}</div>`;
   }).join('');
+  // Sleep section
+  const slp=log['sleep'];
+  if(slp&&slp.score){
+    function toMins2(str){if(!str)return 0;const h=str.match(/(\d+)h/);const m=str.match(/(\d+)m/);return(h?parseInt(h[1])*60:0)+(m?parseInt(m[1]):0);}
+    const deepM=toMins2(slp.deep),remM=toMins2(slp.rem),lightM=toMins2(slp.light),awakeM=toMins2(slp.awake);
+    const totalM=deepM+remM+lightM+awakeM||1;
+    const scoreColor=slp.score>=80?'#1D9E75':slp.score>=60?'#EF9F27':'#D85A30';
+    const q=slp.quality||'';
+    const qClass=q.toLowerCase().includes('excel')?'excellent':q.toLowerCase().includes('good')?'good':q.toLowerCase().includes('fair')?'fair':'poor';
+    const r=40,circ=2*Math.PI*r,dash=circ*(slp.score/100);
+    const ring=`<svg width="96" height="96" viewBox="0 0 96 96"><circle cx="48" cy="48" r="${r}" fill="none" stroke="var(--b)" stroke-width="8"/><circle cx="48" cy="48" r="${r}" fill="none" stroke="${scoreColor}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${circ/4}" transform="rotate(-90 48 48)"/><text x="48" y="44" text-anchor="middle" font-family="Fraunces,serif" font-size="22" font-weight="600" fill="${scoreColor}">${slp.score}</text><text x="48" y="57" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="9" fill="var(--m)">/100</text></svg>`;
+    function sbar(label,mins,color){const pct=Math.round(mins/totalM*100);const h2=Math.floor(mins/60),m2=mins%60;const dur=h2>0?h2+'h '+(m2>0?m2+'m':''):m2+'m';return mins?`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="color:var(--t)">${label}</span><span style="color:var(--m)">${dur} · ${pct}%</span></div><div style="height:6px;background:var(--bg);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:99px"></div></div></div>`:'';}
+    html+=`<div style="margin-top:16px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Sleep</div><div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r16);overflow:hidden"><div style="padding:14px 16px;border-bottom:.5px solid var(--b);display:flex;align-items:center;gap:16px">${ring}<div>${q?`<div class="sleep-quality ${qClass}" style="margin-bottom:6px">${q}</div>`:''}<div style="font-size:20px;font-weight:500;color:var(--t);font-family:'Fraunces',serif">${slp.duration||''}</div><div style="font-size:12px;color:var(--m)">total sleep</div></div></div>${(deepM||remM||lightM)?`<div style="padding:14px 16px;border-bottom:.5px solid var(--b)">${sbar('Deep',deepM,'#3B5BDB')}${sbar('REM',remM,'#CC5DE8')}${sbar('Light',lightM,'#74C0FC')}${sbar('Awake',awakeM,'#FF8787')}</div>`:''}${(slp.hr||slp.stress||slp.restless)?`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0">${slp.hr?`<div style="padding:11px 14px;border-right:.5px solid var(--b)"><div style="font-size:16px;font-weight:500;color:var(--t)">${slp.hr}</div><div style="font-size:10px;color:var(--m)">Resting HR</div></div>`:''} ${slp.stress?`<div style="padding:11px 14px;border-right:.5px solid var(--b)"><div style="font-size:16px;font-weight:500;color:var(--t)">${slp.stress}</div><div style="font-size:10px;color:var(--m)">Stress</div></div>`:''} ${slp.restless?`<div style="padding:11px 14px"><div style="font-size:16px;font-weight:500;color:var(--t)">${slp.restless}</div><div style="font-size:10px;color:var(--m)">Restless</div></div>`:''}</div>`:''}</div></div>`;
+  }
   if(vices.length){const vhtml=vices.map(v=>{const vl=logs[dateKey]||{};const sl=!!vl['slip'+v.id],cl=!!vl['clean'+v.id];const vstatus=sl?'<span style="color:#D85A30;font-size:12px;font-weight:500">✗ Slipped</span>':cl?'<span style="color:var(--acc);font-size:12px;font-weight:500">✓ Clean</span>':'<span style="color:var(--m);font-size:12px">Not logged</span>';const vs=calcViceStats(v);return `<div class="rpt-habit"><div class="rpt-hh"><span style="font-size:20px">${v.emoji}</span><div style="flex:1"><div class="rpt-hn">${esc(v.name)} ${vstatus}</div><div style="font-size:12px;color:var(--m);margin-top:2px">Streak: ${vs.streak} day${vs.streak!==1?'s':''}</div></div></div></div>`;}).join('');html+=`<div style="margin-top:16px"><div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Vices</div>${vhtml}</div>`;}
   const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Amsterdam'});
   const editBtn=document.getElementById('rpt-edit-btn');
