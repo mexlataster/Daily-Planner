@@ -224,6 +224,27 @@ html,body{height:100%;font-family:'DM Sans',sans-serif}
 .vbtn-clean{padding:10px 18px;background:var(--acc);color:#fff;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-right:7px}
 .vbtn-slip{padding:10px 18px;background:#D85A30;color:#fff;border:none;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer}
 .vbtn-cancel{padding:10px 18px;background:transparent;color:var(--m);border:.5px solid var(--b2);border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;margin-top:8px}
+.sleep-card{background:var(--card);border:.5px solid var(--b);border-radius:var(--r16);padding:16px;margin-bottom:12px}
+.sleep-score{font-family:"Fraunces",serif;font-size:52px;font-weight:600;color:var(--accd);line-height:1}
+.sleep-score-lbl{font-size:13px;color:var(--m);margin-top:2px}
+.sleep-quality{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:500;margin-top:6px}
+.sleep-quality.excellent{background:#E1F5EE;color:#085041}
+.sleep-quality.good{background:#E8F4FD;color:#1a6fa8}
+.sleep-quality.fair{background:#FFF3E0;color:#a85c00}
+.sleep-quality.poor{background:rgba(216,90,48,.1);color:#D85A30}
+.sleep-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.sleep-stat{background:var(--bg);border-radius:var(--r12);padding:11px 13px}
+.sleep-stat-val{font-size:18px;font-weight:500;color:var(--t)}
+.sleep-stat-lbl{font-size:11px;color:var(--m);margin-top:2px}
+.sleep-graph-img{width:100%;border-radius:var(--r12);margin-top:4px;display:block}
+.scan-btn{width:100%;padding:12px;background:var(--acc);color:#fff;border:none;border-radius:var(--r12);font-family:"DM Sans",sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-upload{display:none}
+.scan-area{border:1.5px dashed var(--b2);border-radius:var(--r12);padding:18px;text-align:center;cursor:pointer;margin-bottom:10px;transition:border-color .2s}
+.scan-area:hover{border-color:var(--acc)}
+.scan-area p{font-size:13px;color:var(--m);margin-top:6px}
+.scan-area .ei{font-size:28px}
+.scan-preview{width:100%;border-radius:var(--r8);margin-top:8px;max-height:180px;object-fit:cover}
+.scanning-overlay{text-align:center;padding:20px;color:var(--m)}
 .toast{position:fixed;bottom:calc(75px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(20px);background:var(--accd);color:#fff;padding:9px 18px;border-radius:99px;font-size:13px;font-weight:500;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .es{text-align:center;padding:40px 20px;color:var(--m)}
@@ -259,10 +280,13 @@ grant all on logs to anon;</code></div></div>
   </nav>
   <div class="page active" id="pg-home">
     <div class="ph"><h1><span id="greet">Good morning</span><span class="sdot" id="sdot"></span></h1><p id="tdate"></p></div>
-    <div class="mtog"><button class="mt on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button><button class="mt" id="tt-vices" onclick="setTodayTab('vices')">Vices</button></div>
+    <div class="mtog"><button class="mt on" id="tt-habits" onclick="setTodayTab('habits')">Habits</button><button class="mt" id="tt-sleep" onclick="setTodayTab('sleep')">Sleep</button><button class="mt" id="tt-vices" onclick="setTodayTab('vices')">Vices</button></div>
     <div id="today-habits">
       <div class="pbar" id="pbwrap" style="display:none"><div class="pbrow"><span id="ptxt"></span><span id="ppct"></span></div><div class="pbbg"><div class="pbf" id="pfill" style="width:0%"></div></div></div>
       <div class="hlist" id="hlist"></div>
+    </div>
+    <div id="today-sleep" style="display:none;padding:0 20px">
+      <div id="sleep-content"></div>
     </div>
     <div id="today-vices" style="display:none">
       <div id="vices-list" style="padding:0 20px"></div>
@@ -319,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.18.21';
+const APP_VERSION='2026.03.26.1';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -462,10 +486,13 @@ function renderHome(){
 function setTodayTab(tab){
   todayTab=tab;
   document.getElementById('tt-habits').classList.toggle('on',tab==='habits');
+  document.getElementById('tt-sleep').classList.toggle('on',tab==='sleep');
   document.getElementById('tt-vices').classList.toggle('on',tab==='vices');
   document.getElementById('today-habits').style.display=tab==='habits'?'block':'none';
+  document.getElementById('today-sleep').style.display=tab==='sleep'?'block':'none';
   document.getElementById('today-vices').style.display=tab==='vices'?'block':'none';
   if(tab==='vices')renderVices();
+  if(tab==='sleep')renderSleep();
 }
 
 async function toggleDone(id){const k=todayKey();if(!logs[k])logs[k]={};logs[k]['d'+id]=!logs[k]['d'+id];renderHome();setSyncing('syncing');saveLog(k).then(()=>setSyncing('')).catch(()=>{setSyncing('err');showToast('Sync failed');});}
@@ -887,6 +914,143 @@ function toggleEditExCtr(hid,idx){const el=document.getElementById('eetr-'+hid+'
 function editIncrSet(id,idx,delta){const log=logs[editDateKey];if(!log['det'+id])return;const sets=log['det'+id].sets||[];if(!sets[idx])return;sets[idx].done=Math.max(0,(sets[idx].done||0)+delta);log['d'+id]=sets.length>0;renderEditDay();editPanels[id]=true;}
 function editRemoveEx(id,idx){const log=logs[editDateKey];if(!log['det'+id])return;log['det'+id].sets.splice(idx,1);log['d'+id]=log['det'+id].sets.length>0;editPanels[id]=true;renderEditDay();}
 function editAddEx(id){const log=logs[editDateKey];if(!log['det'+id])log['det'+id]={sets:[]};const name=document.getElementById('eexname'+id)?.value.trim();const kg=document.getElementById('eexkg'+id)?.value||'0';const reps=document.getElementById('eexreps'+id)?.value||'0';if(!name)return;log['det'+id].sets.push({name,weight:kg,reps,done:0});log['d'+id]=true;editPanels[id]=true;renderEditDay();}
+
+// ── Sleep ─────────────────────────────────────────────────────────
+let sleepData={img1:null,img2:null,parsed:null};
+
+function renderSleep(){
+  const k=todayKey();
+  const log=logs[k]||{};
+  const saved=log['sleep'];
+  const el=document.getElementById('sleep-content');
+  if(!el)return;
+  if(saved&&saved.score){
+    // Show saved sleep data
+    const q=saved.quality||'';
+    const qClass=q.toLowerCase().includes('excel')?'excellent':q.toLowerCase().includes('good')?'good':q.toLowerCase().includes('fair')?'fair':'poor';
+    el.innerHTML=`
+      <div class="sleep-card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div>
+            <div class="sleep-score">${saved.score}</div>
+            <div class="sleep-score-lbl">Sleep score / 100</div>
+            ${q?`<div class="sleep-quality ${qClass}">${q}</div>`:''}
+          </div>
+          <button onclick="clearSleep()" style="padding:6px 12px;border:.5px solid var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:12px;color:var(--m);cursor:pointer">Re-scan</button>
+        </div>
+        <div class="sleep-grid">
+          ${saved.duration?`<div class="sleep-stat"><div class="sleep-stat-val">💤 ${saved.duration}</div><div class="sleep-stat-lbl">Duration</div></div>`:''}
+          ${saved.deep?`<div class="sleep-stat"><div class="sleep-stat-val">🌊 ${saved.deep}</div><div class="sleep-stat-lbl">Deep sleep</div></div>`:''}
+          ${saved.rem?`<div class="sleep-stat"><div class="sleep-stat-val">🌙 ${saved.rem}</div><div class="sleep-stat-lbl">REM</div></div>`:''}
+          ${saved.light?`<div class="sleep-stat"><div class="sleep-stat-val">☁️ ${saved.light}</div><div class="sleep-stat-lbl">Light sleep</div></div>`:''}
+          ${saved.hr?`<div class="sleep-stat"><div class="sleep-stat-val">❤️ ${saved.hr} bpm</div><div class="sleep-stat-lbl">Resting HR</div></div>`:''}
+          ${saved.stress?`<div class="sleep-stat"><div class="sleep-stat-val">🧠 ${saved.stress}</div><div class="sleep-stat-lbl">Stress avg</div></div>`:''}
+          ${saved.awake?`<div class="sleep-stat"><div class="sleep-stat-val">😵 ${saved.awake}</div><div class="sleep-stat-lbl">Awake time</div></div>`:''}
+          ${saved.restless?`<div class="sleep-stat"><div class="sleep-stat-val">🔄 ${saved.restless}</div><div class="sleep-stat-lbl">Restless moments</div></div>`:''}
+        </div>
+        ${saved.img2?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:7px">Sleep stages</div><img src="${saved.img2}" class="sleep-graph-img"/></div>`:''}
+      </div>`;
+  } else {
+    // Show scan UI
+    el.innerHTML=`
+      <div class="sleep-card">
+        <div style="font-size:15px;font-weight:500;color:var(--t);margin-bottom:4px">📸 Scan Garmin sleep</div>
+        <div style="font-size:13px;color:var(--m);margin-bottom:14px;line-height:1.5">Upload 2 screenshots from your Garmin app — the summary screen and the sleep stages graph.</div>
+        <div class="scan-area" onclick="document.getElementById('sleep-img1').click()">
+          <div class="ei">📊</div>
+          <div style="font-size:13px;font-weight:500;color:var(--t);margin-top:6px">Screenshot 1</div>
+          <p>Sleep summary (score, quality, duration)</p>
+          <img id="preview1" class="scan-preview" style="display:none"/>
+        </div>
+        <input type="file" id="sleep-img1" class="scan-upload" accept="image/*" onchange="previewImg(this,'preview1',1)"/>
+        <div class="scan-area" onclick="document.getElementById('sleep-img2').click()">
+          <div class="ei">🌙</div>
+          <div style="font-size:13px;font-weight:500;color:var(--t);margin-top:6px">Screenshot 2</div>
+          <p>Sleep stages graph (Deep, REM, Light, Awake)</p>
+          <img id="preview2" class="scan-preview" style="display:none"/>
+        </div>
+        <input type="file" id="sleep-img2" class="scan-upload" accept="image/*" onchange="previewImg(this,'preview2',2)"/>
+        <button class="scan-btn" id="scan-go-btn" onclick="scanSleep()" style="opacity:.5;cursor:default" disabled>
+          <span>🔍</span> Analyse screenshots
+        </button>
+        <div id="scan-status" style="text-align:center;font-size:13px;color:var(--m);margin-top:10px;display:none"></div>
+      </div>`;
+    sleepData={img1:null,img2:null,parsed:null};
+  }
+}
+
+function previewImg(input,previewId,num){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById(previewId);
+    if(img){img.src=e.target.result;img.style.display='block';}
+    if(num===1)sleepData.img1=e.target.result;
+    else sleepData.img2=e.target.result;
+    // Enable scan button when at least img1 is loaded
+    const btn=document.getElementById('scan-go-btn');
+    if(btn&&sleepData.img1){btn.style.opacity='1';btn.style.cursor='pointer';btn.disabled=false;}
+  };
+  reader.readAsDataURL(file);
+}
+
+async function scanSleep(){
+  if(!sleepData.img1){showToast('Please add at least the summary screenshot');return;}
+  const status=document.getElementById('scan-status');
+  const btn=document.getElementById('scan-go-btn');
+  if(status){status.style.display='block';status.textContent='🔍 Analysing your sleep data...';}
+  if(btn){btn.disabled=true;btn.style.opacity='.5';}
+
+  try{
+    // Build messages with images
+    const imgContent=[];
+    const toBase64=(dataUrl)=>dataUrl.split(',')[1];
+    const toMime=(dataUrl)=>dataUrl.split(';')[0].split(':')[1];
+
+    imgContent.push({type:'image',source:{type:'base64',media_type:toMime(sleepData.img1),data:toBase64(sleepData.img1)}});
+    if(sleepData.img2){
+      imgContent.push({type:'image',source:{type:'base64',media_type:toMime(sleepData.img2),data:toBase64(sleepData.img2)}});
+    }
+    imgContent.push({type:'text',text:`Extract sleep data from these Garmin screenshots. Return ONLY a JSON object with these fields (use null if not found):
+{"score":number,"quality":"Good|Fair|Excellent|Poor","duration":"8h 1m","deep":"54m","rem":"1h 30m","light":"5h 37m","awake":"16m","hr":number,"stress":number,"restless":number}
+No explanation, just the JSON.`});
+
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:imgContent}]})
+    });
+    const data=await resp.json();
+    const text=data.content?.[0]?.text||'';
+    const jsonMatch=text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('Could not parse response');
+    const parsed=JSON.parse(jsonMatch[0]);
+    parsed.img2=sleepData.img2||null;
+
+    // Save to logs
+    const k=todayKey();
+    if(!logs[k])logs[k]={};
+    logs[k]['sleep']=parsed;
+    setSyncing('syncing');
+    await saveLog(k);
+    setSyncing('');
+    showToast('Sleep data saved! 😴');
+    renderSleep();
+  }catch(e){
+    console.error(e);
+    if(status){status.textContent='❌ Failed: '+e.message;}
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+  }
+}
+
+async function clearSleep(){
+  const k=todayKey();
+  if(logs[k])delete logs[k]['sleep'];
+  setSyncing('syncing');
+  await saveLog(k).catch(()=>{});
+  setSyncing('');
+  renderSleep();
+}
 
 function nav(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
