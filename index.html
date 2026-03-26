@@ -343,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.26.4';
+const APP_VERSION='2026.03.26.5';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -994,41 +994,60 @@ function previewImg(input,previewId,num){
   reader.readAsDataURL(file);
 }
 
+async function resizeImage(dataUrl,maxW=800){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1,maxW/img.width);
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.round(img.width*scale);
+      canvas.height=Math.round(img.height*scale);
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      resolve(canvas.toDataURL('image/jpeg',0.75));
+    };
+    img.src=dataUrl;
+  });
+}
+
 async function scanSleep(){
   if(!sleepData.img1){showToast('Please add at least the summary screenshot');return;}
   const status=document.getElementById('scan-status');
   const btn=document.getElementById('scan-go-btn');
-  if(status){status.style.display='block';status.textContent='🔍 Analysing your sleep data...';}
+  if(status){status.style.display='block';status.textContent='🔍 Resizing images...';}
   if(btn){btn.disabled=true;btn.style.opacity='.5';}
 
   try{
-    // Build messages with images
+    const img1=await resizeImage(sleepData.img1,800);
+    const img2=sleepData.img2?await resizeImage(sleepData.img2,800):null;
+    if(status)status.textContent='🔍 Analysing your sleep data...';
+
+    const toBase64=d=>d.split(',')[1];
+    const toMime=d=>d.split(';')[0].split(':')[1];
+
     const imgContent=[];
-    const toBase64=(dataUrl)=>dataUrl.split(',')[1];
-    const toMime=(dataUrl)=>dataUrl.split(';')[0].split(':')[1];
+    imgContent.push({type:'image',source:{type:'base64',media_type:toMime(img1),data:toBase64(img1)}});
+    if(img2)imgContent.push({type:'image',source:{type:'base64',media_type:toMime(img2),data:toBase64(img2)}});
+    imgContent.push({type:'text',text:'Extract sleep data from these Garmin screenshots. Return ONLY valid JSON, no explanation: {"score":number,"quality":"string","duration":"string","deep":"string","rem":"string","light":"string","awake":"string","hr":number,"stress":number,"restless":number}'});
 
-    imgContent.push({type:'image',source:{type:'base64',media_type:toMime(sleepData.img1),data:toBase64(sleepData.img1)}});
-    if(sleepData.img2){
-      imgContent.push({type:'image',source:{type:'base64',media_type:toMime(sleepData.img2),data:toBase64(sleepData.img2)}});
-    }
-    imgContent.push({type:'text',text:`Extract sleep data from these Garmin screenshots. Return ONLY a JSON object with these fields (use null if not found):
-{"score":number,"quality":"Good|Fair|Excellent|Poor","duration":"8h 1m","deep":"54m","rem":"1h 30m","light":"5h 37m","awake":"16m","hr":number,"stress":number,"restless":number}
-No explanation, just the JSON.`});
-
-    const ANTHROPIC_KEY='';
     const resp=await fetch('https://habits.m-lataster1998.workers.dev/',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:imgContent}]})
     });
-    const data=await resp.json();
-    const text=data.content?.[0]?.text||'';
-    const jsonMatch=text.match(/\{[\s\S]*\}/);
-    if(!jsonMatch)throw new Error('Could not parse response');
-    const parsed=JSON.parse(jsonMatch[0]);
-    parsed.img2=sleepData.img2||null;
 
-    // Save to logs
+    const rawText=await resp.text();
+    console.log('Worker status:',resp.status,'body:',rawText.slice(0,300));
+    if(!resp.ok)throw new Error('HTTP '+resp.status+': '+rawText.slice(0,150));
+
+    const data=JSON.parse(rawText);
+    const text=data.content?.[0]?.text||'';
+    console.log('Claude response:',text);
+
+    const jsonMatch=text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('No JSON found in: '+text.slice(0,100));
+    const parsed=JSON.parse(jsonMatch[0]);
+    parsed.img2=img2||null;
+
     const k=todayKey();
     if(!logs[k])logs[k]={};
     logs[k]['sleep']=parsed;
@@ -1038,8 +1057,8 @@ No explanation, just the JSON.`});
     showToast('Sleep data saved! 😴');
     renderSleep();
   }catch(e){
-    console.error(e);
-    if(status){status.textContent='❌ Failed: '+e.message;}
+    console.error('scanSleep error:',e);
+    if(status)status.textContent='❌ '+e.message;
     if(btn){btn.disabled=false;btn.style.opacity='1';}
   }
 }
