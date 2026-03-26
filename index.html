@@ -343,7 +343,7 @@ grant all on logs to anon;</code></div></div>
   </div>
 </div>
 <script>
-const APP_VERSION='2026.03.26.5';
+const APP_VERSION='2026.03.26.6';
 const CFG='hbt_cfg';
 let URL_='',KEY_='';
 function loadCfg(){try{const c=JSON.parse(localStorage.getItem(CFG)||'{}');URL_=c.url||'';KEY_=c.key||'';}catch(e){}}
@@ -925,30 +925,56 @@ function renderSleep(){
   const el=document.getElementById('sleep-content');
   if(!el)return;
   if(saved&&saved.score){
-    // Show saved sleep data
     const q=saved.quality||'';
+    const score=saved.score||0;
+    const scoreColor=score>=80?'#1D9E75':score>=60?'#EF9F27':'#D85A30';
     const qClass=q.toLowerCase().includes('excel')?'excellent':q.toLowerCase().includes('good')?'good':q.toLowerCase().includes('fair')?'fair':'poor';
+
+    // Parse durations to minutes for bar chart
+    function toMins(str){if(!str)return 0;const h=str.match(/(\d+)h/);const m=str.match(/(\d+)m/);return(h?parseInt(h[1])*60:0)+(m?parseInt(m[1]):0);}
+    const deepM=toMins(saved.deep),remM=toMins(saved.rem),lightM=toMins(saved.light),awakeM=toMins(saved.awake);
+    const totalM=deepM+remM+lightM+awakeM||1;
+
+    // Score ring SVG
+    const r=52,circ=2*Math.PI*r,dash=circ*(score/100),gap=circ-dash;
+    const scoreRing=`<svg width="130" height="130" viewBox="0 0 130 130"><circle cx="65" cy="65" r="${r}" fill="none" stroke="var(--b)" stroke-width="10"/><circle cx="65" cy="65" r="${r}" fill="none" stroke="${scoreColor}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${circ/4}" transform="rotate(-90 65 65)"/><text x="65" y="60" text-anchor="middle" font-family="Fraunces,serif" font-size="30" font-weight="600" fill="${scoreColor}">${score}</text><text x="65" y="76" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="11" fill="var(--m)">/ 100</text></svg>`;
+
+    // Stage bars
+    function bar(label,mins,color,total){
+      const pct=Math.round(mins/total*100);
+      const h=Math.floor(mins/60),m=mins%60;
+      const dur=h>0?h+'h '+(m>0?m+'m':''):m+'m';
+      return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="color:var(--t);font-weight:500">${label}</span><span style="color:var(--m)">${dur} · ${pct}%</span></div><div style="height:7px;background:var(--bg);border-radius:99px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${color};border-radius:99px;transition:width .6s"></div></div></div>`;
+    }
+
     el.innerHTML=`
-      <div class="sleep-card">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between">
-          <div>
-            <div class="sleep-score">${saved.score}</div>
-            <div class="sleep-score-lbl">Sleep score / 100</div>
-            ${q?`<div class="sleep-quality ${qClass}">${q}</div>`:''}
+      <div style="background:var(--card);border:.5px solid var(--b);border-radius:var(--r16);overflow:hidden;margin-bottom:12px">
+        <div style="padding:18px 18px 14px;border-bottom:.5px solid var(--b)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <div style="font-size:13px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.06em">Sleep score</div>
+            <button onclick="clearSleep()" style="padding:5px 11px;border:.5px solid var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:12px;color:var(--m);cursor:pointer">Re-scan</button>
           </div>
-          <button onclick="clearSleep()" style="padding:6px 12px;border:.5px solid var(--b2);background:transparent;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-size:12px;color:var(--m);cursor:pointer">Re-scan</button>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:10px">
+            ${scoreRing}
+            <div>
+              ${q?`<div class="sleep-quality ${qClass}" style="margin-bottom:8px">${q}</div>`:''}
+              ${saved.duration?`<div style="font-size:22px;font-weight:500;color:var(--t);font-family:'Fraunces',serif">${saved.duration}</div><div style="font-size:12px;color:var(--m)">total sleep</div>`:''}
+            </div>
+          </div>
         </div>
-        <div class="sleep-grid">
-          ${saved.duration?`<div class="sleep-stat"><div class="sleep-stat-val">💤 ${saved.duration}</div><div class="sleep-stat-lbl">Duration</div></div>`:''}
-          ${saved.deep?`<div class="sleep-stat"><div class="sleep-stat-val">🌊 ${saved.deep}</div><div class="sleep-stat-lbl">Deep sleep</div></div>`:''}
-          ${saved.rem?`<div class="sleep-stat"><div class="sleep-stat-val">🌙 ${saved.rem}</div><div class="sleep-stat-lbl">REM</div></div>`:''}
-          ${saved.light?`<div class="sleep-stat"><div class="sleep-stat-val">☁️ ${saved.light}</div><div class="sleep-stat-lbl">Light sleep</div></div>`:''}
-          ${saved.hr?`<div class="sleep-stat"><div class="sleep-stat-val">❤️ ${saved.hr} bpm</div><div class="sleep-stat-lbl">Resting HR</div></div>`:''}
-          ${saved.stress?`<div class="sleep-stat"><div class="sleep-stat-val">🧠 ${saved.stress}</div><div class="sleep-stat-lbl">Stress avg</div></div>`:''}
-          ${saved.awake?`<div class="sleep-stat"><div class="sleep-stat-val">😵 ${saved.awake}</div><div class="sleep-stat-lbl">Awake time</div></div>`:''}
-          ${saved.restless?`<div class="sleep-stat"><div class="sleep-stat-val">🔄 ${saved.restless}</div><div class="sleep-stat-lbl">Restless moments</div></div>`:''}
+        ${(deepM||remM||lightM||awakeM)?`<div style="padding:16px 18px;border-bottom:.5px solid var(--b)">
+          <div style="font-size:11px;font-weight:500;color:var(--m);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Sleep stages</div>
+          ${deepM?bar('Deep',deepM,'#3B5BDB',totalM):''}
+          ${remM?bar('REM',remM,'#CC5DE8',totalM):''}
+          ${lightM?bar('Light',lightM,'#74C0FC',totalM):''}
+          ${awakeM?bar('Awake',awakeM,'#FF8787',totalM):''}
+        </div>`:''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+          ${saved.hr?`<div style="padding:13px 16px;border-right:.5px solid var(--b)"><div style="font-size:18px;font-weight:500;color:var(--t)">${saved.hr} <span style="font-size:12px;color:var(--m)">bpm</span></div><div style="font-size:11px;color:var(--m);margin-top:2px">Resting HR</div></div>`:''}
+          ${saved.stress?`<div style="padding:13px 16px"><div style="font-size:18px;font-weight:500;color:var(--t)">${saved.stress}</div><div style="font-size:11px;color:var(--m);margin-top:2px">Stress avg</div></div>`:''}
+          ${saved.restless?`<div style="padding:13px 16px;border-top:.5px solid var(--b);border-right:.5px solid var(--b)"><div style="font-size:18px;font-weight:500;color:var(--t)">${saved.restless}</div><div style="font-size:11px;color:var(--m);margin-top:2px">Restless moments</div></div>`:''}
+          ${saved.awake?`<div style="padding:13px 16px;border-top:.5px solid var(--b)"><div style="font-size:18px;font-weight:500;color:var(--t)">${saved.awake}</div><div style="font-size:11px;color:var(--m);margin-top:2px">Awake time</div></div>`:''}
         </div>
-        ${saved.img2?`<div style="margin-top:12px"><div style="font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;font-weight:500;margin-bottom:7px">Sleep stages</div><img src="${saved.img2}" class="sleep-graph-img"/></div>`:''}
       </div>`;
   } else {
     // Show scan UI
